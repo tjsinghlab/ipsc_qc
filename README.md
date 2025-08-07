@@ -11,14 +11,31 @@ Performing quality control from multiple angles on iPSC lines to ensure viabilit
 .
 ├── README.md
 └── src
-    ├── s01_bulk_rna_preprocessing
+    ├── s01.1_bulk_rna_preprocessing
     │   ├── bulk_rna_processing.py
-    │   ├── cram_to_fastq.sh
+    │   └── cram_to_fastq.sh
+    ├── s01.2_analysis
+    │   ├── batch_correction
+    │   │   ├── deseq.R
+    │   │   ├── prep_for_peer.R
+    │   │   └── run_peer.py
     │   ├── create_variant_tables.sh
+    │   ├── deconvolution
+    │   │   ├── bisque.R
+    │   │   ├── bMIND.R
+    │   │   ├── bMIND.sh
+    │   │   └── plot_deconvolution.R
+    │   ├── outlier_detection
+    │   │   └── outlier_detection.R
     │   ├── plotting.R
-    │   └── process_rsem_outputs.R
+    │   ├── process_puigdevall_data.R
+    │   ├── process_rsem_outputs.R
+    │   ├── process_vcf_in_R.R
+    │   └── read_digital_gene_expression.R
     ├── s02_germline_calling
-    │   └── gatk4_rna_germline_calling_run.py
+    │   ├── gatk4_rna_germline_calling_run.py
+    │   ├── gatk4-rna-best-practices.wdl
+    │   └── gatk4-rna-germline-variant-calling.inputs.json
     ├── s03_pluripotency
     │   ├── pacnet.R
     │   └── process_pacnet_outputs.R
@@ -33,13 +50,10 @@ Performing quality control from multiple angles on iPSC lines to ensure viabilit
     │   └── souporcell.sh
     ├── s06_mycoplasma_detection
     │   └── mycoplasma_bowtie.sh
-    ├── s07_eKaryotyping
-    │   ├── delTabl.R
-    │   ├── eSNPKaryo_loop.sh
-    │   └── eSNPKaryo.R
-    └── s08_outlier_analysis
-        ├── outlier_detection.R
-        └── process_vcf_in_R.R
+    └── s07_eKaryotyping
+        ├── delTabl.R
+        ├── eSNPKaryo_loop.sh
+        └── eSNPKaryo.R
 ```
 
 # Input Files
