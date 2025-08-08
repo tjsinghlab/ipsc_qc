@@ -106,3 +106,28 @@ expected_counts@meta.data<-metadata
 
 saveRDS(expected_counts, "ipsc_858samples_expected_counts_with_logenorm_peer_factors.rds")
 
+
+#Run regressions with gene expression as response and peer-corrected PCs as predictors
+expected_counts<-readRDS("ipsc_858samples_expected_counts_with_logenorm_peer_factors.rds")
+meta<-expected_counts@meta.data
+peer_mat <- GetAssayData(expected_counts, assay = "PEER", slot = "counts")
+
+pca <- prcomp(t(peer_mat), center = TRUE, scale. = TRUE)
+pca_df <- as.data.frame(pca$x)  # scores (principal components)
+
+pca_df$Project <- meta$Project
+#For one gene:
+gene_of_interest <- "POU5F1"
+
+expr <- peer_mat[gene_of_interest, ]  # returns a vector of expression per sample
+df <- cbind(pca_df, POU5F1_expr = expr[rownames(pca_df)])  # match samples
+
+model <- lm(POU5F1_expr ~ PC1 + PC2 + PC3 + PC4 + PC5, data = df)
+summary(model)
+
+ggplot(df, aes(x = PC2, y = POU5F1_expr)) +
+  geom_point(color = "steelblue") +
+  geom_smooth(method = "lm", se = TRUE, color = "firebrick") +
+  labs(title = "POU5F1 Expression vs. PC2",
+       x = "PC2", y = "POU5F1 Expression") +
+  theme_minimal()
