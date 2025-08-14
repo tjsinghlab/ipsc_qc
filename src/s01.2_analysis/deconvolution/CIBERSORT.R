@@ -253,3 +253,22 @@ rownames(metadata)<-metadata$Sample
 bulk_ipsc@meta.data<-metadata
 
 FeaturePlot(bulk_ipsc, reduction="pca", features=c("Formative_TPM","Primed_TPM"))
+
+
+metadata_status<-subset(bulk_ipsc@meta.data, differentiation_status=="Successful" | differentiation_status=="Failed")
+
+#Metadata with PC1 and PC2 embeddings, subset to just hipsci lines with available diff. status
+df<-metadata_status
+df$status<-ifelse(df$differentiation_status=="Failed", 0, 1)
+
+# Make sure differentiation_status is a factor with correct reference level
+df$differentiation_status <- factor(df$differentiation_status, levels = c("Failed", "Successful"))
+
+# Logistic regression: status ~ PC1 + PC2
+model <- glm(differentiation_status ~ Formative_TPM + Primed_TPM + PC_1 + PC_2,
+             data = df,
+             family = binomial)
+
+summary(lm(status~Formative_TPM + PC_1 + PC_2, data=df))
+
+summary(model)
