@@ -23,8 +23,6 @@ write.table(df_out,
             row.names = FALSE)
 
 
-            library(Seurat)
-
 #use lognorm_for_peer.tsv as input for run_peer.py script
 
 #Analyze results from run_peer.py:
@@ -106,6 +104,14 @@ expected_counts@meta.data<-metadata
 
 saveRDS(expected_counts, "ipsc_858samples_expected_counts_with_logenorm_peer_factors.rds")
 
+##how cellcycle score is calculated:
+s.genes <- cc.genes$s.genes
+g2m.genes <- cc.genes$g2m.genes
+
+bulk_ipsc <- CellCycleScoring(bulk_ipsc, s.features = s.genes, g2m.features = g2m.genes, set.ident = TRUE)
+
+DimPlot(bulk_ipsc, group.by=c("Project","differentiation_status","Phase"), reduction="pca")
+saveRDS(bulk_ipsc, "ipsc_858samples_expected_counts_with_logenorm_peer_factors_cellcycle_and_vst_matrix.rds")
 
 #Run regressions with gene expression as response and peer-corrected PCs as predictors
 expected_counts<-readRDS("ipsc_858samples_expected_counts_with_logenorm_peer_factors.rds")
