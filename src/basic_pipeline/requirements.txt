@@ -1,0 +1,30 @@
+# Required files in folder /ref
+# Pipeline expects folder "ref" in home directory with the following files:
+#Cancer mutation calling
+/Cosmic_CancerGeneCensus_Tsv_v101_GRCh37.tar #Cosmic Database
+
+#Mycoplasma detection
+https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/027/325/GCF_000027325.1_ASM2732v1/GCF_000027325.1_ASM2732v1_genomic.fna.gz #Mycoplasma genome
+
+#Pacnet
+hsTFs.rda ("https://github.com/CahanLab/CellNet/tree/master/data/hsTFs.rda")
+mmTFs.rda ("https://github.com/CahanLab/CellNet/tree/master/data/mmTFs.rda")
+
+#eSNPKaryo
+chr (directory with dbSNP build 142 common SNP files (GTF Format). A file for each chromosome (Available from UCSC Table browser tool, called snp142common table). Each file name should end with the chromosome number, X and Y should get a name by their number (For example: in human chromosome X is 23 and Y is 24)
+
+#Required inputs in folder /inputs
+#Cancer mutation calling
+bam file outputs from STAR alignment
+txt file with list of genes of interest (eg. BRCA1, TP53, BCOR)
+
+#Mycoplasma detection
+fastq.gz files from sequencing run (bulk RNAseq)
+
+#Pacnet
+RSEM outputs from preprocessing (function will create gene expression matrix and metadata for you)
+
+#eSNPKaryo
+BAM file from STAR alignment
+VCF file from GATK variant calling
+
