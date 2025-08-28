@@ -3,19 +3,45 @@ library(cancerCellNet)
 library(ggplot2)
 library(patchwork)
 
+suppressPackageStartupMessages(library(optparse))
+
+option_list <- list(
+  make_option(c("-r", "--ref"), type="character", default=file.path(cwd, "ref"),
+              help="Project name", metavar="character"),
+  make_option(c("-p", "--project"), type="character", default="default_project",
+              help="Project name", metavar="character"),
+  make_option(c("-o", "--output_dir"), type="character", default=file.path(cwd, "outputs"),
+              help="Path to desired output directory", metavar="character"),
+  make_option(c("-rsem", "--rsem_outputs"), type="character", default=file.path(cwd, "rsem_outputs"),
+              help="Directory containing output files from RSEM", metavar="character")
+)
+
+opt <- parse_args(OptionParser(option_list=option_list))
+
+ref_dir <- opt$ref
+project_name <- opt$project
+output_dir <- opt$output_dir
+input_dir <- opt$input_dir
+
+# Example use
+metadata <- setNames(
+  data.frame(colnames(full_matrix2), rep(project_name, ncol(full_matrix2))),
+  c("sample_name", "description1")
+)
+
 ####################################
 ########### Load in Data ########### 
 ####################################
 
 #Load in training data from PACnet repo 
-expTrain <- utils_loadObject("Hs_expTrain_Jun-20-2017.rda") #run aws s3 cp s3://cellnet-rnaseq/ref/cnproc/HS/Hs_stTrain_Jun-20-2017.rda . --no-sign-request
-stTrain <- utils_loadObject("Hs_stTrain_Jun-20-2017.rda") # run aws s3 cp s3://cellnet-rnaseq/ref/cnproc/HS/Hs_expTrain_Jun-20-2017.rda . --no-sign-request
+expTrain <- utils_loadObject(paste0(ref_dir, "/Hs_expTrain_Jun-20-2017.rda")) #run aws s3 cp s3://cellnet-rnaseq/ref/cnproc/HS/Hs_stTrain_Jun-20-2017.rda . --no-sign-request
+stTrain <- utils_loadObject(paste0(ref_dir, "/Hs_stTrain_Jun-20-2017.rda")) # run aws s3 cp s3://cellnet-rnaseq/ref/cnproc/HS/Hs_expTrain_Jun-20-2017.rda . --no-sign-request
 
 #Load in query matrix (rownames are genes, col names are samples)
-queryExpDat<-read.csv("query_matrix.csv",row.names=1)
+queryExpDat<-read.csv(paste0(output_dir, "query_matrix.csv"),row.names=1)
 
 #Load in query sample data (cols sample_name and description1)
-querySampTab<-read.csv("query_meta.csv", row.names=1)
+querySampTab<-read.csv(paste0(output_dir, "query_meta.csv"), row.names=1)
 
 #Ensure overlapping genes
 iGenes <- intersect(rownames(expTrain), rownames(queryExpDat))
