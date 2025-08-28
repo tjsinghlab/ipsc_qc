@@ -54,11 +54,11 @@ The pipeline uses R scripts in several modules. Install the necessary R packages
 The pipeline expects separate **reference** and **input** directories:
 
 project/
-├── refs/ # Reference files (unchanging across runs)
-├── inputs/ # Input files for a specific sample run
-├── outputs/ # Output directory
-├── modules/ # Contains all pipeline modules
-└── pipeline_runner.sh
+- ├── refs/ # Reference files (unchanging across runs)
+- ├── inputs/ # Input files for a specific sample run
+- ├── outputs/ # Output directory
+- ├── modules/ # Contains all pipeline modules
+- └── pipeline_runner.sh
 
 ---
 
