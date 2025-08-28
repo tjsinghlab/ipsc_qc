@@ -2,16 +2,32 @@ library(dplyr)
 library(patchwork)
 library(ggplot2)
 library(data.table)
-setwd("/path/to/wd/")
+
+suppressPackageStartupMessages(library(optparse))
+
+option_list <- list(
+  make_option("--ref_dir", type="character", default="default_project",
+              help="Reference directory (default: ./ref)", metavar="character"),
+  make_option(c("-o", "--output_dir"), type="character", default=".",
+              help="Output directory", metavar="character"),
+  make_option(c("-i", "--vcf_dir"), type="character", default=".",
+              help="Directory containing FASTQ files", metavar="character")
+)
+
+opt <- parse_args(OptionParser(option_list=option_list))
+
+ref_dir <- opt$ref_dir
+output_dir <- opt$output_dir
+Dir=opt$vcf_dir
 
 #loop over all files in directory containing "variant_filtered.vcf.gz" but not containing the string "tbi"
 #extract COSMIC database
-untar("/gpfs/commons/groups/singh_lab/users/kjakubiak/COSMIC_DB/Cosmic_CancerGeneCensus_Tsv_v101_GRCh37.tar", exdir = "COSMIC_DB")
+untar(paste0(ref_dir, "/Cosmic_CancerGeneCensus_Tsv_v101_GRCh38.tar"), exdir = ref_dir)
 #Directory="/gpfs/commons/groups/singh_lab/users/kjakubiak/ipsc/ekaryo/"
 Organism="Human"
 #print("Editing VCF File")
 #Directory  
-Dir="/directory/to/vcf/files/"
+
 file = "FILENAME.variant_filtered.vcf.gz"
 path = paste(Dir, file, sep="")
 readData = read.delim(VCF_FILE,as.is=T)
@@ -39,6 +55,7 @@ while (startInfo + jump < len) {
   infoVector = append(infoVector, readData[startInfo])
 }
 
+
 chrNum = gsub(chrRegex, "\\1", chrVector)
 if (Organism=="Human"){
   chrNum[chrNum=="X"]="23"
@@ -62,11 +79,11 @@ table$chr=as.numeric(table$chr)
 table=table[order(table$chr,table$position),]
 table=table[table$chr>0,]
 colnames(table)<-c("CHROMOSOME","POS","AD1","AD2","DP","KARYOTYPE")
-cosmic = fread("/gpfs/commons/groups/singh_lab/users/kjakubiak/COSMIC_DB/Cosmic_MutantCensus_v101_GRCh38.tsv.gz")
+cosmic = fread(paste0(ref_dir, "Cosmic_MutantCensus_v101_GRCh38.tsv.gz")
 #db<-cosmic[,-c(2:8,19:25)]
 colnames(table)<-c("CHROMOSOME","POS","AD1","AD2","DP","Karyotype")
 
-genes<-read.table("/gpfs/commons/groups/singh_lab/users/kjakubiak/ipsc/gene_list.txt")
+genes<-read.table(paste0(ref_dir, "/genes.txt")
 db<-cosmic_tier1_10tumors_confirmed
 #db<-db[db$GENE_SYMBOL%in%genes$V1]
 #db<-subset(db, GENE_SYMBOL%in%genes$V1)

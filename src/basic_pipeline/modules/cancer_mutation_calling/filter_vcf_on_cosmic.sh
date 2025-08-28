@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Usage: ./filter_vcf_cosmic.sh input.vcf.gz cosmic_data.tar gene_list.txt output.tsv
+#Usage: ./filter_vcf_cosmic.sh input.vcf.gz cosmic_data.tar gene_list.txt output.tsv
 
 VCF_GZ_FILE="$1"
 COSMIC_TAR="$2" #/Cosmic_CancerGeneCensus_Tsv_v101_GRCh37.tar
