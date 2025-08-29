@@ -11,19 +11,44 @@ Performing quality control from multiple angles on iPSC lines to ensure viabilit
 .
 ├── README.md
 └── src
+    ├── basic_pipeline
+    │   ├── Dockerfile
+    │   ├── modules
+    │   │   ├── cancer_mutation_calling
+    │   │   │   ├── cancer_mutation_mapping.R
+    │   │   │   ├── cosmic_loop.sh
+    │   │   │   └── filter_vcf_on_cosmic.sh
+    │   │   ├── eSNPKaryo
+    │   │   │   └── eSNPKaryotyping.R
+    │   │   ├── mycoplasma_detection
+    │   │   │   └── mycoplasma_detection.sh
+    │   │   ├── outlier_detection
+    │   │   │   └── outlier_detection.R
+    │   │   └── PACNet
+    │   │       ├── pacnet.R
+    │   │       └── process_rsem_outputs.R
+    │   ├── pipeline_runner.sh
+    │   ├── README.md
+    │   ├── requirements.txt
+    │   ├── scripts
+    │   │   └── reference_check.sh
+    │   └── tarballs
+    │       └── CellNet_master.tar.gz
     ├── s01.1_bulk_rna_preprocessing
     │   ├── bulk_rna_processing.py
     │   └── cram_to_fastq.sh
     ├── s01.2_analysis
     │   ├── batch_correction
     │   │   ├── deseq.R
-    │   │   ├── prep_for_peer.R
+    │   │   ├── limma_voom.R
+    │   │   ├── peer_prep_and_process.R
     │   │   └── run_peer.py
     │   ├── create_variant_tables.sh
     │   ├── deconvolution
     │   │   ├── bisque.R
     │   │   ├── bMIND.R
     │   │   ├── bMIND.sh
+    │   │   ├── CIBERSORT.R
     │   │   └── plot_deconvolution.R
     │   ├── outlier_detection
     │   │   └── outlier_detection.R
