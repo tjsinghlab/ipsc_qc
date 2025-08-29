@@ -29,11 +29,8 @@ The pipeline depends on the following command line tools:
 - `vcftools`
 - `aws` CLI (only needed if PACNet training files are missing)
 
-Ensure these tools are installed or available via a module system. For AWS CLI, make sure v2 is installed.
-
-### R Packages
-
-The pipeline uses R scripts in several modules. Install the necessary R packages as listed in the module scripts.
+Ensure these tools are installed or available via a module system (ex. HPC users). For AWS CLI, make sure v2 is installed.
+R packages will be included as part of the docker image.
 
 ---
 

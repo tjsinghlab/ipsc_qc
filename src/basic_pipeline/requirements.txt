@@ -8,6 +8,7 @@ inputs/vcfs #folder of VCF files from GATK variant calling
 
 #Mycoplasma detection
 ref/GCF_000027325.1_ASM2732v1_genomic.fna.gz (wget https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/027/325/GCF_000027325.1_ASM2732v1/GCF_000027325.1_ASM2732v1_genomic.fna.gz) #Mycoplasma genome
+"fastqs" #folder of fastq.gz files from sequencing run (bulk RNAseq)
 
 #PACNet
 ref/Hs_expTrain_Jun-20-2017.rda (command line run: aws s3 cp s3://cellnet-rnaseq/ref/cnproc/HS/Hs_stTrain_Jun-20-2017.rda . --no-sign-request)
@@ -16,8 +17,8 @@ inputs/RSEM #folder of RSEM outputs from preprocessing (function will create gen
 
 #eSNPKaryo
 ref/chr #directory with dbSNP build 142 common SNP files (GTF Format). A file for each chromosome (Available from UCSC Table browser tool, called snp142common table. Each file name should end with the chromosome number, X and Y should get a name by their number (For example: in human chromosome X is 23 and Y is 24)
+ref/GCF_000001405.26/GCF_000001405.26_GRCh38_genomic.fna #ncbi reference genome fasta file (Available from NCBI, ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/001/405/GCF_000001405.26_GRCh38.p13)
 inputs/bams #folder of bam file outputs from STAR alignment
 inputs/vcfs #folder of VCF files from GATK variant calling
 
-#Mycoplasma detection
-"fastqs" #folder of fastq.gz files from sequencing run (bulk RNAseq)
+

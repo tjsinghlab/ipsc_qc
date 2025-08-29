@@ -5,21 +5,39 @@ library(gplots)
 library(patchwork)
 library(ggplot2)
 
-#BAM file/STAR outs location: "/gpfs/commons/groups/singh_lab/users/kjakubiak/ipsc/ekaryo/star_outs/"
-#VCF file location: /gpfs/commons/groups/singh_lab/users/dongwang/RNA-variant-calling
+option_list <- list(
+  make_option(c("-p", "--project"), type="character", default="default_project",
+              help="Project name", metavar="character"),
+  make_option(c("-o", "--output_dir"), type="character", default=file.path(cwd, "outputs"),
+              help="Path to desired output directory", metavar="character"),
+  make_option(c("-o", "--bam_dir"), type="character", default=file.path(cwd, "bams"),
+              help="Directory containing BAM files", metavar="character"),
+  make_option(c("-o", "--ref_dir"), type="character", default=file.path(cwd, "ref"),
+              help="Reference directory (default: ./ref)", metavar="character"),
+  make_option(c("-o", "--vcf_dir"), type="character", default=file.path(cwd, "vcfs"),
+              help="Directory containing VCF files", metavar="character"),
+)
+
+opt <- parse_args(OptionParser(option_list=option_list))
+
+project_name <- opt$project
+output_dir <- opt$output_dir
+ref_dir <- opt$ref_dir
+bam_dir <- opt$bam_dir
+vcf_dir <- opt$vcf_dir
 
 # Before LOH analysis, the dbSNP files need to be edited using the Edit_dbSNP_Files function (done only once):
-Edit_dbSNP_Files(Directory = "/Users/kjakubiak/Documents/chr/", File_Name = "chr", Organism = "Human")
+Edit_dbSNP_Files(Directory = paste0(ref_dir, "/chr/", File_Name = "chr", Organism = "Human")
 # Argument: 1. Directory - the directory were the files are, one GTF file per chromosome
 #           2. File_Name - the files name, without the number of the chromosomes
 #           3. Organism - "Human" or "Mouse"
 
 #EditVCF
-Directory="/gpfs/commons/groups/singh_lab/users/kjakubiak/ipsc/ekaryo/"
+Directory=output_dir
 Organism="Human"
 print("Editing VCF File")
   Directory  
-  Dir="/gpfs/commons/groups/singh_lab/users/kjakubiak/ipsc/ekaryo/"
+  Dir=output_dir,
   file = "24246R-06-11.variant_filtered.vcf.gz"
   path = paste(Dir, file, sep="")
   readData = read.delim(path,as.is=T)
@@ -84,8 +102,6 @@ table2=MajorMinorCalc(Table = table,minDP = 20,maxDP = 1000000,minAF = 0.2)
 
 PlotGenome(table2, Window=151, Organism="Human", Ylim=3, PValue=T)
 
-#tbl=DeletionTable(Directory = "/Users/kjakubiak/Documents/variantTable.csv",Table = table2,dbSNP_Data_Directory = ,dbSNP_File_Name = ,Genome_Fa_dict = ,Organism = )
-
 DeletionTable<-function(Directory,Table,dbSNP_Data_Directory,dbSNP_File_Name,Genome_Fa_dict,Organism){
   print("Reading SNPs table")
   i=1
@@ -123,9 +139,6 @@ DeletionTable<-function(Directory,Table,dbSNP_Data_Directory,dbSNP_File_Name,Gen
   while (i<mx){
     print(paste("Chromosome ",i, "| ",Sys.time(),sep=""))
     x1=x[x$chr==i,]
-    
-    
-    
     
     if(dict_type==0){
       loc=paste("chr",x1$chr[1],":",x1$start[1],"-",x1$start[dim(x1)[1]],sep="")
@@ -176,7 +189,7 @@ DeletionTable<-function(Directory,Table,dbSNP_Data_Directory,dbSNP_File_Name,Gen
 
 # 8. intersect the observed SNPs with the common SNPs table from dbSNPs, Creates file with the LOH data called Deletions.txt
 #this requires the accepted_hits.bam output from tophat, so I've renamed the aligned.out.bam from STAR to accepted_hits.bam to match what the function is expecting
-tbl=DeletionTable(Directory = "/gpfs/commons/groups/singh_lab/users/kjakubiak/ipsc/ekaryo/tmp/",Table = table2,dbSNP_Data_Directory = "/gpfs/commons/groups/singh_lab/users/kjakubiak/ipsc/ekaryo/chr/",dbSNP_File_Name = "Edited_Common_chr",Genome_Fa_dict = "/gpfs/commons/groups/singh_lab/users/kjakubiak/ipsc/ekaryo/ncbi_dataset/data/GCF_000001405.26/GCF_000001405.26_GRCh38_genomic.fna",Organism = "Human")
+tbl=DeletionTable(Directory = paste0(output_dir, "/tmp/"),Table = table2,dbSNP_Data_Directory = paste0(ref_dir, "/chr/"),dbSNP_File_Name = "Edited_Common_chr",Genome_Fa_dict = paste0(ref_dir, "/ncbi_dataset/data/GCF_000001405.26/GCF_000001405.26_GRCh38_genomic.fna"),Organism = "Human")
 # Argument: 1. Directory - The Path of to the BAM Directory, containing the variantTable.csv file
 #           2. Table - The variable containing the output of the MajorMinorCalc function
 #           3. dbSNP_Data_Directory - The path for the directory where the edited dbSNP file are (created previously by the Edit_dbSNP_Files function)
