@@ -1,19 +1,7 @@
-# Pipeline Runner
+# iPSC QC Pipeline
 
-This pipeline will call cancer mutations in select cancerous genes, run eSNPKaryotyping, determine mycoplasma detection, run PACNet, and identify outliers in bulk RNA sequencing data.
-This pipeline expects outputs from STAR alignment, RSEM, and GATK variant calling pipelines.
-
----
-
-## Table of Contents
-
-- [Requirements](#requirements)
-- [Directory Structure](#directory-structure)
-- [Inputs](#inputs)
-- [Pipeline Runner Arguments](#pipeline-runner-arguments)
-- [Reference Files](#reference-files)
-- [Running the Pipeline](#running-the-pipeline)
-- [Troubleshooting](#troubleshooting)
+This pipeline will screen bulk RNA sequencing data for several QC metrics, including cancer mutation calling (in select oncogenes), eSNPKaryotyping, mycoplasma detection, PACNet classification, and outlier assessment.
+This pipeline expects outputs from STAR alignment, RSEM, and GATK variant calling pipelines, in addition to fastq.gz files from sequencing run.
 
 ---
 
@@ -33,7 +21,7 @@ This pipeline expects outputs from STAR alignment, RSEM, and GATK variant callin
 
 ### Tools
 
-The pipeline depends on the following command-line tools:
+The pipeline depends on the following command line tools:
 
 - `bowtie2`
 - `samtools`
@@ -105,7 +93,7 @@ project/
 - **Refs**:  
   - `ref/Hs_expTrain_Jun-20-2017.rda`  
   - `ref/Hs_stTrain-Jun-20-2017.rda`  
-    > Can be downloaded automatically using AWS CLI (public S3, no credentials):  
+    > Can be downloaded automatically using AWS CLI (public S3, no credentials needed) in accordance with PACNet repo:  
     ```bash
     aws s3 cp s3://cellnet-rnaseq/ref/cnproc/HS/Hs_expTrain_Jun-20-2017.rda . --no-sign-request
     aws s3 cp s3://cellnet-rnaseq/ref/cnproc/HS/Hs_stTrain-Jun-20-2017.rda . --no-sign-request
