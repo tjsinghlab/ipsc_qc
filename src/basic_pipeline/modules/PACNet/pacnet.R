@@ -21,7 +21,6 @@ opt <- parse_args(OptionParser(option_list=option_list))
 ref_dir <- opt$ref
 project_name <- opt$project
 output_dir <- opt$output_dir
-input_dir <- opt$input_dir
 
 # Example use
 metadata <- setNames(
@@ -135,6 +134,8 @@ names(grp_names1) <- c(as.character(rownames(querySampTab)), paste0("rand_", c(1
 
 # Re-order classMatrixQuery to match order of rows in querySampTab
 classMatrixEx <- classMatrixEx[,names(grp_names1)]
+
+write.csv(classMatrixEx, file=paste0(output_dir, "/classification_scores.csv"))
 
 ####################################
 ######### Generate Heatmap #########

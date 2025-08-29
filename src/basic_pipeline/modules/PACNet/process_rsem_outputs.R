@@ -126,5 +126,5 @@ metadata <- setNames(
   c("sample_name", "description1")
 )
 
-write.csv(full_matrix, "query_matrix.csv")
-write.csv(metadata, "query_meta.csv")
+write.csv(full_matrix, paste0(output_dir, "/query_matrix.csv"))
+write.csv(metadata, paste0(output_dir, "query_meta.csv"))
