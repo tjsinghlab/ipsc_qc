@@ -4,7 +4,7 @@ set -euo pipefail
 # ----------------------
 # Defaults
 # ----------------------
-PROJECT="default_project"
+PROJECT="Project [$(date '+%a %b %d %Y %H:%M')]"
 OUTPUT_DIR="$(pwd)/ipsc_qc_outputs"
 REF_DIR="$(pwd)/ref"
 VCF_DIR=""
@@ -26,8 +26,10 @@ usage() {
     echo ""
     echo "Optional arguments:"
     echo "  --ref_dir PATH       Reference directory (default: ./ref)"
-    echo "  --project NAME       Project name (default: ${PROJECT})"
+    echo "  --project NAME       Project name (default: ${PROJECT} and time/date of pipeline run)"
     echo "  --output_dir PATH    Output directory (default: ./ipsc_qc_outputs)"
+    echo ""
+    echo "See requirements.txt and README.md for more details on arguments and inputs."
     echo ""
     exit 1
 }
@@ -81,7 +83,13 @@ for sample in "${SAMPLES[@]}"; do
     bam_file=$(ls "$BAM_DIR"/"$sample"*.bam 2>/dev/null || true)
     vcf_file=$(ls "$VCF_DIR"/"$sample"*.vcf* 2>/dev/null || true)
     rsem_file=$(ls "$RSEM_DIR"/"$sample"* 2>/dev/null || true)
-    fastq_files=($(ls "$FASTQ_DIR"/"$sample"*.fastq* 2>/dev/null || true))
+
+    # Determine base name before the last underscore
+    base_name=$(basename "$sample")
+    base_name="${base_name%_*}"  # removes everything after the last underscore
+
+    # Collect FASTQ files for this sample
+    fastq_files=($(ls "$FASTQ_DIR"/"$base_name"_*.fastq* 2>/dev/null || true))
 
     if [[ -z "$bam_file" || -z "$vcf_file" || -z "$rsem_file" || ${#fastq_files[@]} -eq 0 ]]; then
         echo "[WARN] Missing files for sample $sample. Skipping..."
@@ -92,58 +100,58 @@ for sample in "${SAMPLES[@]}"; do
     mkdir -p "$sample_outdir"
 
     # ----------------------
+    # Run PacNet
+    # ----------------------
+    echo "[INFO] Assessing pluripotency for $sample..."
+    Rscript modules/PACNet/run_pacnet.R \
+        --vcf "$vcf_file" --rsem "$rsem_file" --ref_dir "$REF_DIR" --output_dir "$sample_outdir" \
+        > "$LOG_DIR/pacnet_${sample}.log" 2>&1
+
+    # ----------------------
+    # Run cancer mutation calling
+    # ----------------------
+    echo "[INFO] Checking for COSMIC mutations in $sample..."
+    bash modules/cancer_mutation_calling/filter_vcf_on_cosmic.sh \
+        --vcf "$vcf_file" --ref_dir "$REF_DIR" --output_dir "$sample_outdir" \
+        > "$LOG_DIR/filtered_vcf_for_cosmic_${sample}.log" 2>&1
+
+    Rscript modules/cancer_mutation_calling/cancer_mutation_mapping.R \
+        --vcf "$vcf_file" --ref_dir "$REF_DIR" --output_dir "$sample_outdir" \
+        > "$LOG_DIR/cancer_mutation_mapping_${sample}.log" 2>&1
+
+    # ----------------------
+    # Run eKaryo
+    # ----------------------
+    echo "[INFO] Assessing chromosomal integrity for $sample..."
+    Rscript modules/eSNPKaryotyping/run_eSNPKaryotyping.R \
+        --bam "$bam_file" --ref_dir "$REF_DIR" --output_dir "$sample_outdir" \
+        > "$LOG_DIR/ekaryo_${sample}.log" 2>&1
+    
+    # ----------------------
     # Run Mycoplasma detection
     # ----------------------
-    echo "[INFO] Running Mycoplasma detection for $sample..."
+    echo "[INFO] Detecting mycoplasma in $sample..."
     bash modules/mycoplasma_detection/detect_mycoplasma.sh \
         --bam "$bam_file" --ref_dir "$REF_DIR" --output_dir "$sample_outdir" \
         > "$LOG_DIR/mycoplasma_${sample}.log" 2>&1
 
     # ----------------------
-    # Run cancer mutation calling
-    # ----------------------
-    echo "[INFO] Running cancer mutation calling for $sample..."
-    bash modules/cancer_mutation_calling/step1_call_mutations.sh \
-        --vcf "$vcf_file" --ref_dir "$REF_DIR" --output_dir "$sample_outdir" \
-        > "$LOG_DIR/mutation_calling_step1_${sample}.log" 2>&1
-
-    Rscript modules/cancer_mutation_calling/step2_process_mutations.R \
-        --vcf "$vcf_file" --ref_dir "$REF_DIR" --output_dir "$sample_outdir" \
-        > "$LOG_DIR/mutation_calling_step2_${sample}.log" 2>&1
-
-    # ----------------------
-    # Run PacNet
-    # ----------------------
-    echo "[INFO] Running PacNet for $sample..."
-    Rscript modules/pacnet/run_pacnet.R \
-        --vcf "$vcf_file" --rsem "$rsem_file" --ref_dir "$REF_DIR" --output_dir "$sample_outdir" \
-        > "$LOG_DIR/pacnet_${sample}.log" 2>&1
-
-    # ----------------------
-    # Run eKaryo
-    # ----------------------
-    echo "[INFO] Running eKaryo for $sample..."
-    Rscript modules/eKaryo/run_eKaryo.R \
-        --bam "$bam_file" --ref_dir "$REF_DIR" --output_dir "$sample_outdir" \
-        > "$LOG_DIR/ekaryo_${sample}.log" 2>&1
-
-    # ----------------------
     # Run outlier detection (PCA / pacnet scores)
     # ----------------------
-    echo "[INFO] Running outlier detection for $sample..."
-    Rscript modules/outliers/detect_outliers.R \
+    echo "[INFO] Detecting outliers in $sample..."
+    Rscript modules/outlier_detection/outlier_detection.R \
         --fastq "${fastq_files[@]}" --ref_dir "$REF_DIR" --output_dir "$sample_outdir" \
         > "$LOG_DIR/outliers_${sample}.log" 2>&1
+
+    # ----------------------
+    # Compile HTML summary
+    # ----------------------
+    echo "[INFO] Generating summary for $sample..."
+    Rscript modules/report_builder/generate_html_summary.R \
+        --output_dir "$OUTPUT_DIR" --project "$PROJECT" \
+        > "$LOG_DIR/html_summary.log" 2>&1
 
     echo "[INFO] Finished processing $sample. Results in $sample_outdir"
 done
 
-# ----------------------
-# Compile HTML summary
-# ----------------------
-echo "[INFO] Generating HTML summary..."
-Rscript modules/report_builder/generate_html_summary.R \
-    --output_dir "$OUTPUT_DIR" --project "$PROJECT" \
-    > "$LOG_DIR/html_summary.log" 2>&1
-
-echo "[INFO] Pipeline completed successfully. Summary report: $OUTPUT_DIR/${PROJECT}_summary.html"
+echo "[INFO] Pipeline completed. All results in $OUTPUT_DIR"

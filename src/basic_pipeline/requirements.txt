@@ -1,24 +1,45 @@
-#Required files for pipeline
-#You will be required to specify a "ref" directory and an "inputs" directory when running the pipeline
-#Input directory to refs, and separetely directory to inputs, such that the unchanging refs folder can be used for multiple different sample runs (instead of having to change the refs location every time you want to change the inputs)
-#Cancer mutation calling
-ref/Cosmic_CancerGeneCensus_Tsv_v101_GRCh37.tar #Cosmic Database
-ref/genes.txt #txt file with list of genes of interest (default is BRCA1, BRCA2, TP53, BCOR, EGFR)
-inputs/vcfs #folder of VCF files from GATK variant calling
+# Pipeline Required Files & Directories
 
-#Mycoplasma detection
-ref/GCF_000027325.1_ASM2732v1_genomic.fna.gz (wget https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/027/325/GCF_000027325.1_ASM2732v1/GCF_000027325.1_ASM2732v1_genomic.fna.gz) #Mycoplasma genome
-inputs/fastqs #folder of fastq.gz files from sequencing run (bulk RNAseq)
+## Reference Files (place in `ref/` directory; default is ./ref)
+- `Cosmic_CancerGeneCensus_Tsv_v101_GRCh37.tar`  
+  *Cosmic Database*
+- `genes.txt`  
+  *List of genes of interest (default: BRCA1, BRCA2, TP53, BCOR, EGFR)*
+- `GCF_000027325.1_ASM2732v1_genomic.fna.gz`  
+  *Mycoplasma genome*  
+  Download:  
+  `wget https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/027/325/GCF_000027325.1_ASM2732v1/GCF_000027325.1_ASM2732v1_genomic.fna.gz`
+- `Hs_expTrain_Jun-20-2017.rda`  
+  Download:  
+  `aws s3 cp s3://cellnet-rnaseq/ref/cnproc/HS/Hs_expTrain_Jun-20-2017.rda . --no-sign-request`
+- `Hs_stTrain_Jun-20-2017.rda`  
+  Download:  
+  `aws s3 cp s3://cellnet-rnaseq/ref/cnproc/HS/Hs_stTrain_Jun-20-2017.rda . --no-sign-request`
+- `chr/`  
+  *Directory with dbSNP build 142 common SNP files (GTF format), one per chromosome.  
+  Human: X = 23, Y = 24.  
+  Source: UCSC Table Browser, snp142common table.*
+- `GCF_000001405.26/GCF_000001405.26_GRCh38_genomic.fna`  
+  *NCBI reference genome FASTA file*  
+  Download:  
+  `ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/001/405/GCF_000001405.26_GRCh38.p13`
 
-#PACNet
-ref/Hs_expTrain_Jun-20-2017.rda (command line run: aws s3 cp s3://cellnet-rnaseq/ref/cnproc/HS/Hs_stTrain_Jun-20-2017.rda . --no-sign-request)
-ref/Hs_stTrain_Jun-20-2017.rda (command line run: aws s3 cp s3://cellnet-rnaseq/ref/cnproc/HS/Hs_expTrain_Jun-20-2017.rda . --no-sign-request)
-inputs/RSEM #folder of RSEM outputs from preprocessing (function will create gene expression matrix and metadata for you)
+## Input Directories
+- `vcf_dir/`  
+  *VCF files from GATK variant calling*
+- `bam_dir/`  
+  *BAM files from STAR alignment*
+- `rsem_dir/`  
+  *RSEM output files (should contain `genes.results` and `isoforms.results`)*
+- `fastq_dir/`  
+  *FASTQ files from sequencing run (bulk RNAseq)*
 
-#eSNPKaryo
-ref/chr #directory with dbSNP build 142 common SNP files (GTF Format). A file for each chromosome (Available from UCSC Table browser tool, called snp142common table. Each file name should end with the chromosome number, X and Y should get a name by their number (For example: in human chromosome X is 23 and Y is 24)
-ref/GCF_000001405.26/GCF_000001405.26_GRCh38_genomic.fna #ncbi reference genome fasta file (Available from NCBI, ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/001/405/GCF_000001405.26_GRCh38.p13)
-inputs/bams #folder of bam file outputs from STAR alignment
-inputs/vcfs #folder of VCF files from GATK variant calling
+## Additional Arguments
+- `--project`  
+  *Name of project for this batch; appears in plots*
+- `--output_dir`  
+  *Path to desired output directory (created if it doesn't exist; default: `./outputs`)*
 
-
+**Note:**  
+File base names should be unique for each sample and consistent across file types  
+(e.g., `sample1.vcf`, `sample1.bam`, `sample1.genes.results`, `sample1_R1.fastq.gz`, `sample1_R2.fastq.gz`)
