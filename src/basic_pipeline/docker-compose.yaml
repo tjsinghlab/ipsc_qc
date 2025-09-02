@@ -1,0 +1,20 @@
+version: "3.8"
+
+services:
+  pipeline:
+    build: .
+    container_name: pipeline_container
+    volumes:
+      # Mount host FASTQ directory (read-only)
+      - ./fastqs:/data/fastqs:ro
+      # Mount output directory (pipeline writes results here)
+      - ./outputs:/data/outputs
+      # Mount reference directory
+      - ./ref:/data/ref:ro
+    environment:
+      # Environment variables the pipeline can use
+      - FASTQ_DIR=/data/fastqs
+      - OUTPUT_DIR=/data/outputs
+      - REF_DIR=/data/ref
+    working_dir: /pipeline
+    command: ["/pipeline/pipeline_runner.sh"]
