@@ -43,7 +43,6 @@ while [[ $# -gt 0 ]]; do
         --rsem_dir)   RSEM_DIR="$2"; shift ;;
         --bam_dir)    BAM_DIR="$2"; shift ;;
         --fastq_dir)  FASTQ_DIR="$2"; shift ;;
-        --input_dir)  INPUT_DIR="$2"; shift ;;
         --output_dir) OUTPUT_DIR="$2"; shift ;;
         -h|--help)    usage ;;
         *) echo "[ERROR] Unknown option: $1"; usage ;;
@@ -54,84 +53,97 @@ done
 # ----------------------
 # Validate required args
 # ----------------------
-if [[ -z "$REF_DIR" || -z "$VCF_DIR" || -z "$RSEM_DIR" || -z "$BAM_DIR" || -z "$FASTQ_DIR" ]]; then
+if [[ -z "$VCF_DIR" || -z "$RSEM_DIR" || -z "$BAM_DIR" || -z "$FASTQ_DIR" ]]; then
     echo "[ERROR] Missing one or more required arguments."
     usage
 fi
 
-# ----------------------
-# Create output directory if not exists
-# ----------------------
 mkdir -p "$OUTPUT_DIR"
+LOG_DIR="$OUTPUT_DIR/logs"
+mkdir -p "$LOG_DIR"
 
 # ----------------------
-# Check tools and references
+# Extract unique sample names from BAM files
 # ----------------------
-bash scripts/bash/reference_check.sh "$REF_DIR"
-
-# ----------------------
-# RSEM and BAM file names must match
-# ----------------------
-RSEM_FILES=($(ls "$RSEM_DIR" | sort))
-BAM_FILES=($(ls "$BAM_DIR" | sort))
-
-if [ ${#RSEM_FILES[@]} -eq 0 ] || [ ${#BAM_FILES[@]} -eq 0 ]; then
-    echo "[ERROR] One or both directories ($RSEM_DIR, $BAM_DIR) are empty."
+SAMPLES=($(ls "$BAM_DIR"/*.bam | xargs -n1 basename | sed 's/\..*//' | sort -u))
+if [ ${#SAMPLES[@]} -eq 0 ]; then
+    echo "[ERROR] No BAM files found in $BAM_DIR"
     exit 1
 fi
+echo "[INFO] Found ${#SAMPLES[@]} samples: ${SAMPLES[*]}"
 
-if [ ${#RSEM_FILES[@]} -ne ${#BAM_FILES[@]} ]; then
-    echo "[ERROR] Mismatch in number of files between RSEM and BAM directories."
-    echo "  RSEM count: ${#RSEM_FILES[@]}"
-    echo "  BAM count:  ${#BAM_FILES[@]}"
-    exit 1
-fi
+# ----------------------
+# Process each sample
+# ----------------------
+for sample in "${SAMPLES[@]}"; do
+    echo "[INFO] Processing sample: $sample"
 
-for i in "${!RSEM_FILES[@]}"; do
-    base_rsem=$(basename "${RSEM_FILES[$i]}" .txt | sed 's/\..*//')
-    base_bam=$(basename "${BAM_FILES[$i]}" .bam | sed 's/\..*//')
+    bam_file=$(ls "$BAM_DIR"/"$sample"*.bam 2>/dev/null || true)
+    vcf_file=$(ls "$VCF_DIR"/"$sample"*.vcf* 2>/dev/null || true)
+    rsem_file=$(ls "$RSEM_DIR"/"$sample"* 2>/dev/null || true)
+    fastq_files=($(ls "$FASTQ_DIR"/"$sample"*.fastq* 2>/dev/null || true))
 
-    if [ "$base_rsem" != "$base_bam" ]; then
-        echo "[ERROR] File mismatch at index $i:"
-        echo "  RSEM: ${RSEM_FILES[$i]}"
-        echo "  BAM:  ${BAM_FILES[$i]}"
-        exit 1
+    if [[ -z "$bam_file" || -z "$vcf_file" || -z "$rsem_file" || ${#fastq_files[@]} -eq 0 ]]; then
+        echo "[WARN] Missing files for sample $sample. Skipping..."
+        continue
     fi
+
+    sample_outdir="$OUTPUT_DIR/$sample"
+    mkdir -p "$sample_outdir"
+
+    # ----------------------
+    # Run Mycoplasma detection
+    # ----------------------
+    echo "[INFO] Running Mycoplasma detection for $sample..."
+    bash modules/mycoplasma_detection/detect_mycoplasma.sh \
+        --bam "$bam_file" --ref_dir "$REF_DIR" --output_dir "$sample_outdir" \
+        > "$LOG_DIR/mycoplasma_${sample}.log" 2>&1
+
+    # ----------------------
+    # Run cancer mutation calling
+    # ----------------------
+    echo "[INFO] Running cancer mutation calling for $sample..."
+    bash modules/cancer_mutation_calling/step1_call_mutations.sh \
+        --vcf "$vcf_file" --ref_dir "$REF_DIR" --output_dir "$sample_outdir" \
+        > "$LOG_DIR/mutation_calling_step1_${sample}.log" 2>&1
+
+    Rscript modules/cancer_mutation_calling/step2_process_mutations.R \
+        --vcf "$vcf_file" --ref_dir "$REF_DIR" --output_dir "$sample_outdir" \
+        > "$LOG_DIR/mutation_calling_step2_${sample}.log" 2>&1
+
+    # ----------------------
+    # Run PacNet
+    # ----------------------
+    echo "[INFO] Running PacNet for $sample..."
+    Rscript modules/pacnet/run_pacnet.R \
+        --vcf "$vcf_file" --rsem "$rsem_file" --ref_dir "$REF_DIR" --output_dir "$sample_outdir" \
+        > "$LOG_DIR/pacnet_${sample}.log" 2>&1
+
+    # ----------------------
+    # Run eKaryo
+    # ----------------------
+    echo "[INFO] Running eKaryo for $sample..."
+    Rscript modules/eKaryo/run_eKaryo.R \
+        --bam "$bam_file" --ref_dir "$REF_DIR" --output_dir "$sample_outdir" \
+        > "$LOG_DIR/ekaryo_${sample}.log" 2>&1
+
+    # ----------------------
+    # Run outlier detection (PCA / pacnet scores)
+    # ----------------------
+    echo "[INFO] Running outlier detection for $sample..."
+    Rscript modules/outliers/detect_outliers.R \
+        --fastq "${fastq_files[@]}" --ref_dir "$REF_DIR" --output_dir "$sample_outdir" \
+        > "$LOG_DIR/outliers_${sample}.log" 2>&1
+
+    echo "[INFO] Finished processing $sample. Results in $sample_outdir"
 done
 
-echo "[INFO] RSEM and BAM files validated. Names and order match."
-
 # ----------------------
-# Loop over VCF inputs
+# Compile HTML summary
 # ----------------------
-VCF_FILES=("$VCF_DIR"/*.vcf)
-if [ ${#VCF_FILES[@]} -eq 0 ]; then
-    echo "[ERROR] No VCF files found in $VCF_DIR"
-    exit 1
-fi
+echo "[INFO] Generating HTML summary..."
+Rscript modules/report_builder/generate_html_summary.R \
+    --output_dir "$OUTPUT_DIR" --project "$PROJECT" \
+    > "$LOG_DIR/html_summary.log" 2>&1
 
-# ----------------------
-# Run modules
-# ----------------------
-for vcf in "${VCF_FILES[@]}"; do
-    echo "[INFO] Processing: $vcf (Project: $PROJECT)"
-
-    echo "[INFO] Running cancer mutation calling..."
-    bash modules/cancer_mutation_calling/step1_call_mutations.sh "$vcf" "$REF_DIR" "$OUTPUT_DIR"
-    Rscript modules/cancer_mutation_calling/step2_process_mutations.R "$vcf" "$REF_DIR" "$OUTPUT_DIR"
-
-    echo "[INFO] Running mycoplasma detection..."
-    bash modules/mycoplasma_detection/detect_mycoplasma.sh "$vcf" "$REF_DIR" "$OUTPUT_DIR"
-
-    echo "[INFO] Running PacNet..."
-    Rscript modules/pacnet/run_pacnet.R "$vcf" "$REF_DIR" "$RSEM_DIR" "$OUTPUT_DIR"
-
-    echo "[INFO] Running eKaryo..."
-    Rscript modules/eKaryo/run_eKaryo.R "$vcf" "$REF_DIR" "$BAM_DIR" "$OUTPUT_DIR"
-
-    echo "[INFO] Running outlier detection..."
-    Rscript modules/outliers/detect_outliers.R "$vcf" "$REF_DIR" "$FASTQ_DIR" "$OUTPUT_DIR"
-done
-
-echo "[INFO] Pipeline completed successfully."
-
+echo "[INFO] Pipeline completed successfully. Summary report: $OUTPUT_DIR/${PROJECT}_summary.html"

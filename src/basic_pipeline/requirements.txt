@@ -8,7 +8,7 @@ inputs/vcfs #folder of VCF files from GATK variant calling
 
 #Mycoplasma detection
 ref/GCF_000027325.1_ASM2732v1_genomic.fna.gz (wget https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/027/325/GCF_000027325.1_ASM2732v1/GCF_000027325.1_ASM2732v1_genomic.fna.gz) #Mycoplasma genome
-"fastqs" #folder of fastq.gz files from sequencing run (bulk RNAseq)
+inputs/fastqs #folder of fastq.gz files from sequencing run (bulk RNAseq)
 
 #PACNet
 ref/Hs_expTrain_Jun-20-2017.rda (command line run: aws s3 cp s3://cellnet-rnaseq/ref/cnproc/HS/Hs_stTrain_Jun-20-2017.rda . --no-sign-request)

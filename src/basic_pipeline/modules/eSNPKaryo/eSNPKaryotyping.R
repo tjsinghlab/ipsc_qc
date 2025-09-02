@@ -10,12 +10,12 @@ option_list <- list(
               help="Project name", metavar="character"),
   make_option(c("-o", "--output_dir"), type="character", default=file.path(cwd, "outputs"),
               help="Path to desired output directory", metavar="character"),
-  make_option(c("-o", "--bam_dir"), type="character", default=file.path(cwd, "bams"),
+  make_option(c("-b", "--bam_dir"), type="character", default=file.path(cwd, "bams"),
               help="Directory containing BAM files", metavar="character"),
-  make_option(c("-o", "--ref_dir"), type="character", default=file.path(cwd, "ref"),
+  make_option(c("-r", "--ref_dir"), type="character", default=file.path(cwd, "ref"),
               help="Reference directory (default: ./ref)", metavar="character"),
-  make_option(c("-o", "--vcf_dir"), type="character", default=file.path(cwd, "vcfs"),
-              help="Directory containing VCF files", metavar="character"),
+  make_option(c("-v", "--vcf_dir"), type="character", default=file.path(cwd, "vcfs"),
+              help="Directory containing VCF files", metavar="character")
 )
 
 opt <- parse_args(OptionParser(option_list=option_list))
@@ -27,7 +27,7 @@ bam_dir <- opt$bam_dir
 vcf_dir <- opt$vcf_dir
 
 # Before LOH analysis, the dbSNP files need to be edited using the Edit_dbSNP_Files function (done only once):
-Edit_dbSNP_Files(Directory = paste0(ref_dir, "/chr/", File_Name = "chr", Organism = "Human")
+Edit_dbSNP_Files(Directory = paste0(ref_dir, "/chr/"), File_Name = "chr", Organism = "Human")
 # Argument: 1. Directory - the directory were the files are, one GTF file per chromosome
 #           2. File_Name - the files name, without the number of the chromosomes
 #           3. Organism - "Human" or "Mouse"
@@ -204,5 +204,3 @@ tbl=DeletionTable(Directory = paste0(output_dir, "/tmp/"),Table = table2,dbSNP_D
 Plot_Zygosity_Sinle(Table = tbl,Organism = "Human")
 
 Plot_Zygosity_Blocks(Table = tbl,Window = 1500000,Max = 6,Max2 = 60,Organism = "Human")
-
-
