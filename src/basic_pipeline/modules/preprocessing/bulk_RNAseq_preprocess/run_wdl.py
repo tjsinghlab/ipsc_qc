@@ -30,22 +30,22 @@ set_cloud(cloud=is_cloud)
 
 #region
 runner = wdlplayer(
-    outdir='/gpfs/commons/groups/singh_lab/users/dongwang/wdlplay_logs/WholeGenomeProcessing',
+    outdir='/output_dir/WholeGenomeProcessing',
     filedir=filedir,
     localdata=localdir,
-    tmpdir='/gpfs/commons/groups/singh_lab/users/dongwang/wdlplay_logs/WholeGenomeProcessing/.caper_tmp/',
+    tmpdir='/output_dir/WholeGenomeProcessing/.caper_tmp/',
     caper_backend_tag='slurm',
-    hostname='login-singh',
+    hostname='',
     port=8200,
-    gcp_project='singh-comp-d-271c')
+    gcp_project='')
 #endregion
 
 #%%
 name = 'process_bulk_rna'
-wdl = '/gpfs/commons/groups/singh_lab/users/dongwang/hbccseq/src/RNA-seq/1.0_process-raw/RNAseq_pipeline_fastq.wdl'
+wdl = 'RNAseq_pipeline_fastq.wdl'
 
 #%%
-directory = "/gpfs/commons/groups/singh_lab/projects/bd2village/data/ipsc_bulk-rnaseq"
+directory = "fastq_dir"
 onlyfiles = os.listdir(directory)
 onlyfiles = [f for f in onlyfiles if ".fastq" in f or ".fq" in f]
 onlyfiles = sorted(onlyfiles)
@@ -62,10 +62,10 @@ for i in range(0, len(onlyfiles), 2):
 inputs = [{
       "rnaseq_pipeline_fastq_workflow.fastqs": i[0], # list of length 2, the first element is the R1 fastq and the second element is the R2 fastq
       "rnaseq_pipeline_fastq_workflow.prefix": i[1], # sample name of the fastq files
-      "rnaseq_pipeline_fastq_workflow.star_index_oh75": "/gpfs/commons/groups/singh_lab/resources/RNAseq/star_index_oh75", # reference files for STAR
-      "rnaseq_pipeline_fastq_workflow.rsem_reference": "/gpfs/commons/groups/singh_lab/resources/RNAseq/rsem_reference", # reference files for RSEM
-      "rnaseq_pipeline_fastq_workflow.genes_gtf": "/gpfs/commons/groups/singh_lab/resources/RNAseq/gencode.v39.GRCh38.genes.collapsed_only.gtf", # reference GTF
-      "rnaseq_pipeline_fastq_workflow.outdir": "/gpfs/commons/groups/singh_lab/users/dongwang/hbccseq/rnaseq/" # where to save outputs to
+      "rnaseq_pipeline_fastq_workflow.star_index_oh75": "/ref/star_index_oh75", # reference files for STAR
+      "rnaseq_pipeline_fastq_workflow.rsem_reference": "/ref/rsem_reference", # reference files for RSEM
+      "rnaseq_pipeline_fastq_workflow.genes_gtf": "/ref/gencode.v39.GRCh38.genes.collapsed_only.gtf", # reference GTF
+      "rnaseq_pipeline_fastq_workflow.outdir": "/output_dir/" # where to save outputs to
     } for i in inputs_list]
 names = [name + "-" + str(i+1) for i in range(len(inputs))]
 

@@ -12,26 +12,38 @@ Performing quality control from multiple angles on iPSC lines to ensure viabilit
 ├── README.md
 └── src
     ├── basic_pipeline
+    │   ├── docker-compose.yaml
     │   ├── Dockerfile
     │   ├── modules
     │   │   ├── cancer_mutation_calling
     │   │   │   ├── cancer_mutation_mapping.R
-    │   │   │   ├── cosmic_loop.sh
     │   │   │   └── filter_vcf_on_cosmic.sh
-    │   │   ├── eSNPKaryo
-    │   │   │   └── eSNPKaryotyping.R
+    │   │   ├── eSNPKaryotyping
+    │   │   │   └── run_eSNPKaryotyping.R
     │   │   ├── mycoplasma_detection
-    │   │   │   └── mycoplasma_detection.sh
+    │   │   │   └── detect_mycoplasma.sh
     │   │   ├── outlier_detection
     │   │   │   └── outlier_detection.R
-    │   │   └── PACNet
-    │   │       ├── pacnet.R
-    │   │       └── process_rsem_outputs.R
+    │   │   ├── PACNet
+    │   │   │   └── run_pacnet.R
+    │   │   └── preprocessing
+    │   │       ├── bulk_RNAseq_preprocess
+    │   │       │   ├── RNAseq_pipeline_fastq.wdl
+    │   │       │   ├── run_wdl.py
+    │   │       │   └── wdl
+    │   │       │       ├── fastqc.wdl
+    │   │       │       ├── markduplicates.wdl
+    │   │       │       ├── rnaseqc2.wdl
+    │   │       │       ├── rsem.wdl
+    │   │       │       └── star.wdl
+    │   │       └── GATK_variant_calling
+    │   │           ├── gatk4-rna-best-practices.wdl
+    │   │           ├── gatk4-rna-germline-calling_run.py
+    │   │           └── gatk4-rna-germline-variant-calling.inputs.json
     │   ├── pipeline_runner.sh
     │   ├── README.md
-    │   ├── requirements.txt
-    │   ├── scripts
-    │   │   └── reference_check.sh
+    │   ├── reference_check.sh
+    │   ├── report_builder.R
     │   └── tarballs
     │       └── CellNet_master.tar.gz
     ├── s01.1_bulk_rna_preprocessing

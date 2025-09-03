@@ -3,17 +3,19 @@ set -euo pipefail
 
 # -----------------------------------------------------------------------------
 # Script: filter_vcf_cosmic.sh
-# Purpose: Filter a VCF file against COSMIC data for selected genes.
+# Purpose: Filter a VCF file against COSMIC data for selected genes (per-sample).
 # -----------------------------------------------------------------------------
 # Example usage:
 #   ./filter_vcf_cosmic.sh \
-#     --vcf input.vcf.gz \
+#     --sample SAMPLE1 \
+#     --vcf SAMPLE1.vcf.gz \
 #     --cosmic Cosmic_CancerGeneCensus_Tsv_v101_GRCh37.tar \
 #     --genes gene_list.txt \
 #     --output output_dir/cancer_mutations/results.tsv
 # -----------------------------------------------------------------------------
 
 # Defaults
+SAMPLE=""
 VCF_GZ_FILE=""
 COSMIC_TAR=""
 GENE_LIST=""
@@ -22,12 +24,13 @@ OUTPUT_FILE=""
 # Parse arguments
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --sample) SAMPLE="$2"; shift 2 ;;
     --vcf) VCF_GZ_FILE="$2"; shift 2 ;;
     --cosmic) COSMIC_TAR="$2"; shift 2 ;;
     --genes) GENE_LIST="$2"; shift 2 ;;
     --output) OUTPUT_FILE="$2"; shift 2 ;;
     -h|--help)
-      echo "Usage: $0 --vcf input.vcf.gz --cosmic cosmic_data.tar --genes gene_list.txt --output results.tsv"
+      echo "Usage: $0 --sample SAMPLE --vcf input.vcf.gz --cosmic cosmic_data.tar --genes gene_list.txt --output results.tsv"
       exit 0
       ;;
     *)
@@ -38,7 +41,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Check required arguments
-if [[ -z "$VCF_GZ_FILE" || -z "$COSMIC_TAR" || -z "$GENE_LIST" || -z "$OUTPUT_FILE" ]]; then
+if [[ -z "$SAMPLE" || -z "$VCF_GZ_FILE" || -z "$COSMIC_TAR" || -z "$GENE_LIST" || -z "$OUTPUT_FILE" ]]; then
   echo "Error: Missing required arguments."
   echo "Run with --help for usage."
   exit 1
@@ -55,28 +58,30 @@ done
 # Make sure output directory exists
 mkdir -p "$(dirname "$OUTPUT_FILE")"
 
+# Create sample-specific temp directory
+TEMP_DIR=$(mktemp -d -t cosmic_${SAMPLE}_XXXX)
+
 # Extract COSMIC tar file
-echo "[INFO] Extracting COSMIC data..."
-TEMP_DIR=$(mktemp -d)
+echo "[INFO][$SAMPLE] Extracting COSMIC data..."
 tar -xf "$COSMIC_TAR" -C "$TEMP_DIR"
 
 COSMIC_GZ_FILE=$(find "$TEMP_DIR" -name "*.tsv.gz" | head -n 1)
 if [[ -z "$COSMIC_GZ_FILE" ]]; then
-  echo "Error: No TSV.GZ file found in COSMIC tarball!"
+  echo "[ERROR][$SAMPLE] No TSV.GZ file found in COSMIC tarball!"
   exit 1
 fi
 
-echo "[INFO] Using COSMIC data from: $COSMIC_GZ_FILE"
+echo "[INFO][$SAMPLE] Using COSMIC data from: $COSMIC_GZ_FILE"
 COSMIC_FILE="${COSMIC_GZ_FILE%.gz}"
 gunzip -c "$COSMIC_GZ_FILE" > "$COSMIC_FILE"
 
 # Decompress VCF
-TEMP_VCF=$(mktemp)
-echo "[INFO] Decompressing VCF..."
+TEMP_VCF=$(mktemp -t vcf_${SAMPLE}_XXXX)
+echo "[INFO][$SAMPLE] Decompressing VCF..."
 zcat "$VCF_GZ_FILE" | grep -v '^#' > "$TEMP_VCF"
 
 # Filter COSMIC for selected genes
-echo "[INFO] Filtering COSMIC for genes in $GENE_LIST..."
+echo "[INFO][$SAMPLE] Filtering COSMIC for genes in $GENE_LIST..."
 grep -F -f "$GENE_LIST" "$COSMIC_FILE" > "${TEMP_DIR}/filtered_cosmic.tmp"
 
 # Extract COSMIC positions
@@ -86,14 +91,14 @@ awk -F'\t' '{print $15"\t"$16"\t"$17"\t"$1}' "${TEMP_DIR}/filtered_cosmic.tmp" >
 awk -F'\t' '{print $1"\t"$2"\t"$3"\t"$4"\t"$5"\t"$8}' "$TEMP_VCF" > "${TEMP_DIR}/vcf_positions.tmp"
 
 # Cross-reference
-echo "[INFO] Cross-referencing VCF with COSMIC..."
+echo "[INFO][$SAMPLE] Cross-referencing VCF with COSMIC..."
 awk 'NR==FNR {cosmic[$1,$2]=$0; next} ($1,$2) in cosmic {print cosmic[$1,$2]"\t"$0}' \
   "${TEMP_DIR}/cosmic_positions.tmp" \
   "${TEMP_DIR}/vcf_positions.tmp" \
   > "$OUTPUT_FILE"
 
-echo "[INFO] Final output: $(wc -l < "$OUTPUT_FILE") matched variants"
-echo "[INFO] Results saved to: $OUTPUT_FILE"
+echo "[INFO][$SAMPLE] Final output: $(wc -l < "$OUTPUT_FILE") matched variants"
+echo "[INFO][$SAMPLE] Results saved to: $OUTPUT_FILE"
 
 # Cleanup
 rm -rf "$TEMP_DIR" "$TEMP_VCF"

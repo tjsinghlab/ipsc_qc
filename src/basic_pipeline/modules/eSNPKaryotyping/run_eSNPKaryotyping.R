@@ -10,6 +10,9 @@ suppressPackageStartupMessages({
   library(optparse)
 })
 
+# -----------------------
+# Options
+# -----------------------
 cwd <- getwd()
 
 option_list <- list(
@@ -38,12 +41,16 @@ sample <- opt$sample
 
 if (is.null(sample)) stop("Error: --sample must be provided!")
 
+dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
+
 # -----------------------------
 # Edit dbSNP files (once only)
 # -----------------------------
-Edit_dbSNP_Files(Directory = file.path(ref_dir, "chr"), 
-                 File_Name = "chr", 
-                 Organism = "Human")
+Edit_dbSNP_Files(
+  Directory = file.path(ref_dir, "chr"), 
+  File_Name = "chr", 
+  Organism = "Human"
+)
 
 # -----------------------------
 # Edit VCF & generate variant table
@@ -79,10 +86,8 @@ while (startInfo + jump < len) {
 }
 
 chrNum <- gsub(chrRegex, "\\1", chrVector)
-chrNum[chrNum == "X" & Organism == "Human"] <- "23"
-chrNum[chrNum == "Y" & Organism == "Human"] <- "24"
-chrNum[chrNum == "X" & Organism == "Mouse"] <- "20"
-chrNum[chrNum == "Y" & Organism == "Mouse"] <- "21"
+chrNum[chrNum == "X"] <- "23"
+chrNum[chrNum == "Y"] <- "24"
 chrNum <- as.numeric(chrNum)
 
 Karyotape <- 10 * abs(as.numeric(gsub(infoRegex, "\\1", infoVector)) - as.numeric(gsub(infoRegex, "\\2", infoVector)))
@@ -118,88 +123,61 @@ PlotGenome(table2, Window = 151, Organism = "Human", Ylim = 3, PValue = TRUE)
 # -----------------------------
 # Run DeletionTable
 # -----------------------------
-DeletionTable<-function(Directory,Table,dbSNP_Data_Directory,dbSNP_File_Name,Genome_Fa_dict,Organism){
-  print("Reading SNPs table")
+bam_file <- file.path(bam_dir, paste0(sample, ".bam"))
+if (!file.exists(bam_file)) stop(paste("BAM file not found:", bam_file))
+
+DeletionTable <- function(Directory, Table, dbSNP_Data_Directory, dbSNP_File_Name, Genome_Fa_dict, Organism, bam_file) {
+  message("Reading SNPs table...")
   i=1
   
-  if(Organism=="Human"){mx=25}
-  if(Organism=="Mouse"){mx=22}
+  if (Organism=="Human"){mx=25} else if (Organism=="Mouse"){mx=22}
   
-  while (i <mx){
-    print(paste("Chromosome:",i))
-    chrTable = read.delim(paste(dbSNP_Data_Directory,dbSNP_File_Name,i,sep=""))
-    if (i==1) {snpTable = chrTable}
-    if (i>1) {snpTable = rbind(snpTable,chrTable)}
+  snpTable <- NULL
+  while (i < mx){
+    chrTable <- read.delim(paste0(dbSNP_Data_Directory, dbSNP_File_Name, i))
+    snpTable <- if (is.null(snpTable)) chrTable else rbind(snpTable, chrTable)
     i=i+1
   }
   
-  
-  table2=Table
-  colnames(table2)[2]="start"
-  print("Merging Tables")
-  x=merge(snpTable,table2,by = c("chr","start"),all.x=T)
-  x=x[order(x$chr,x$start),]
-  
+  x <- merge(snpTable, Table, by = c("chr","position"), all.x = TRUE)
+  x <- x[order(x$chr,x$position),]
   
   setwd(Directory)
+  system(paste("samtools index", shQuote(bam_file)))
   
-  print("Indexing BAM File")
-  system("samtools index accepted_hits.bam")
+  dict <- read.csv(Genome_Fa_dict, as.is=TRUE)
+  dict_type <- ifelse(length(grep("chr", dict[1,1]))==0, 0, 1)
   
-  dict=read.csv(Genome_Fa_dict,as.is=T)
-  dict_type=grep(pattern = "chr",x = dict[1,1])
-  if(length(dict_type)==0){dict_type=0}
-  
-  
-  i=1
-  while (i<mx){
-    print(paste("Chromosome ",i, "| ",Sys.time(),sep=""))
-    x1=x[x$chr==i,]
+  tbl <- NULL
+  for (i in 1:(mx-1)) {
+    message(paste("Chromosome ", i, " | ", Sys.time()))
+    x1 <- x[x$chr==i,]
+    if (nrow(x1) == 0) next
     
     if(dict_type==0){
-      loc=paste("chr",x1$chr[1],":",x1$start[1],"-",x1$start[dim(x1)[1]],sep="")
-      if(Organism=="Human"){
-        if (i==23) {loc=paste("chrX:",x1$start[1],"-",x1$start[dim(x1)[1]],sep="")}
-        if (i==24) {loc=paste("chrY:",x1$start[1],"-",x1$start[dim(x1)[1]],sep="")}}
-      if(Organism=="Mouse"){
-        if (i==20) {loc=paste("chrX:",x1$start[1],"-",x1$start[dim(x1)[1]],sep="")}
-        if (i==21) {loc=paste("chrY:",x1$start[1],"-",x1$start[dim(x1)[1]],sep="")}}
+      loc <- paste0("chr", i, ":", x1$position[1], "-", x1$position[nrow(x1)])
+      if (i==23) loc <- paste0("chrX:", x1$position[1], "-", x1$position[nrow(x1)])
+      if (i==24) loc <- paste0("chrY:", x1$position[1], "-", x1$position[nrow(x1)])
+    } else {
+      loc <- paste0(i, ":", x1$position[1], "-", x1$position[nrow(x1)])
     }
     
-    if(dict_type==1){
-      loc=paste(x1$chr[1],":",x1$start[1],"-",x1$start[dim(x1)[1]],sep="")
-      #loc=paste("chr", x1$chr[1], ":", x1$start[1], "-", x1$start[dim(x1)[1]], sep="")
-      
-      if(Organism=="Human"){
-        if (i==23) {loc=paste("X:",x1$start[1],"-",x1$start[dim(x1)[1]],sep="")}
-        if (i==24) {loc=paste("Y:",x1$start[1],"-",x1$start[dim(x1)[1]],sep="")}}
-      if(Organism=="Mouse"){
-        if (i==20) {loc=paste("X:",x1$start[1],"-",x1$start[dim(x1)[1]],sep="")}
-        if (i==21) {loc=paste("Y:",x1$start[1],"-",x1$start[dim(x1)[1]],sep="")}}
-    }
-    
-    command=paste("samtools depth -r ",loc ," accepted_hits.bam > reads-per-position.txt",sep="")
+    command <- paste("samtools depth -r", shQuote(loc), bam_file, "> reads-per-position.txt")
     system(command)
-    system ("awk -F \" \" '($3 >20){print $0}' reads-per-position.txt >reads-per-position2.txt")
-    chr=read.delim("reads-per-position2.txt",header = F)
-    colnames(chr)=c("chr","start","Depth")
-    x2=merge(x1,chr,by="start")
-    x2=cbind(x2,Depth_group=x2$Depth)
-    x2$Depth_group[x2$Depth<50] ="20-50"
-    x2$Depth_group[x2$Depth>49 & x2$Depth<100] ="50-100"
-    x2$Depth_group[x2$Depth>99 & x2$Depth<200] ="100-200"
-    x2$Depth_group[x2$Depth>199 & x2$Depth<500] ="200-500"
-    x2$Depth_group[x2$Depth>499] =">500"
-    x2$Depth_group=as.factor(x2$Depth_group)
-    if (i==1) {tbl=x2}
-    if (i>1) {tbl=rbind(tbl,x2)}
-    i=i+1
+    system("awk -F \" \" '($3 >20){print $0}' reads-per-position.txt > reads-per-position2.txt")
+    
+    chr <- read.delim("reads-per-position2.txt", header = FALSE)
+    colnames(chr) <- c("chr","position","Depth")
+    x2 <- merge(x1, chr, by="position")
+    x2$Depth_group <- cut(x2$Depth,
+                          breaks = c(20,50,100,200,500,Inf),
+                          labels = c("20-50","50-100","100-200","200-500",">500"),
+                          include.lowest = TRUE)
+    tbl <- if (is.null(tbl)) x2 else rbind(tbl,x2)
   }
   
-  
-  print("Writing Table")
-  tbl[is.na(tbl)]=0
-  write.table(tbl,"Deletions.txt" , sep="\t",row.names=F,quote=F)
+  tbl[is.na(tbl)] <- 0
+  write.table(tbl, "Deletions.txt", sep="\t", row.names=FALSE, quote=FALSE)
   return(tbl)
 }
 
@@ -209,7 +187,8 @@ tbl <- DeletionTable(
   dbSNP_Data_Directory = file.path(ref_dir, "chr"),
   dbSNP_File_Name = "Edited_Common_chr",
   Genome_Fa_dict = file.path(ref_dir, "ncbi_dataset/data/GCF_000001405.26/GCF_000001405.26_GRCh38_genomic.fna"),
-  Organism = "Human"
+  Organism = "Human",
+  bam_file = bam_file
 )
 
 Plot_Zygosity_Sinle(Table = tbl, Organism = "Human")

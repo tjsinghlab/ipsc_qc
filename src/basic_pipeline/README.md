@@ -19,48 +19,48 @@ This pipeline expects outputs from STAR alignment, RSEM, and GATK variant callin
 
 ## Requirements
 ### Reference Files (place in `ref/` directory; default is ./ref)
+- `star_index_oh75`
+  *reference files for STAR; included in docker image*
+- `rsem_reference`
+  *reference files for RSEM; included in docker image*
+- `gencode.v39.GRCh38.genes.collapsed_only.gtf`
+  *reference GTF; included in docker image*
+- `Homo_sapiens_assembly38_noALT_noHLA_noDecoy.fasta`
+  *refFasta; included in docker image*
+- `Homo_sapiens_assembly38_noALT_noHLA_noDecoy.fasta.fai`
+  *refFastaIndex; included in docker image*
+- `Homo_sapiens_assembly38_noALT_noHLA_noDecoy.dict`
+  *refDict; included in docker image*
+- `Homo_sapiens_assembly38.dbsnp138.vcf`
+  *dbSnpVcf; included in docker image*
+- `Homo_sapiens_assembly38.dbsnp138.vcf.idx` 
+  *dbSnpVcfIndex; included in docker image*
+- `Mills_and_1000G_gold_standard.indels.hg38.vcf.gz`
+  *knownVcf 1; included in docker image*
+- `Homo_sapiens_assembly38.known_indels.vcf.gz`
+  *knownVcf 2; included in docker image*
+- `Mills_and_1000G_gold_standard.indels.hg38.vcf.gz.tbi`
+  *knownVcfIndex 1; included in docker image*
+- `Homo_sapiens_assembly38.known_indels.vcf.gz.tbi`
+  *knownVcfIndex 2; included in docker image*
+- `gencode.v39.GRCh38.genes.collapsed_only.gtf`
+  *annotationsGTF; included in docker image*
+- `images/gatk_4.6.1.0.sif`
+  *gatk4_docker; included in docker image*
 - `Cosmic_CancerGeneCensus_Tsv_v101_GRCh37.tar`  
-  *Cosmic Database*
+  *Cosmic Database; MUST BE DOWNLOADED BY USER AND INCLUDED IN REF_DIR ARGUMENT*
 - `genes.txt`  
-  *List of genes of interest (default: BRCA1, BRCA2, TP53, BCOR, EGFR)*
+  *List of genes of interest (default: BRCA1, BRCA2, TP53, BCOR, EGFR); included in docker image*
 - `GCF_000027325.1_ASM2732v1_genomic.fna.gz`  
-  *Mycoplasma genome*  
-  Download:  
-  `wget https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/027/325/GCF_000027325.1_ASM2732v1/GCF_000027325.1_ASM2732v1_genomic.fna.gz`
+  *Mycoplasma genome; included in docker image but can also be downloaded with `wget https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/027/325/GCF_000027325.1_ASM2732v1/GCF_000027325.1_ASM2732v1_genomic.fna.gz`*
 - `Hs_expTrain_Jun-20-2017.rda`  
-  Download:  
-  `aws s3 cp s3://cellnet-rnaseq/ref/cnproc/HS/Hs_expTrain_Jun-20-2017.rda . --no-sign-request`
+  *PACNet training data; included in docker image but can also be downloaded with `aws s3 cp s3://cellnet-rnaseq/ref/cnproc/HS/Hs_expTrain_Jun-20-2017.rda . --no-sign-request`*
 - `Hs_stTrain_Jun-20-2017.rda`  
-  Download:  
-  `aws s3 cp s3://cellnet-rnaseq/ref/cnproc/HS/Hs_stTrain_Jun-20-2017.rda . --no-sign-request`
+  *PACNet training data; included in docker image but can also be downloaded with `aws s3 cp s3://cellnet-rnaseq/ref/cnproc/HS/Hs_stTrain_Jun-20-2017.rda . --no-sign-request`*
 - `chr/`  
-  *Directory with dbSNP build 142 common SNP files (GTF format), one per chromosome.  
-  Human: X = 23, Y = 24.  
-  Source: UCSC Table Browser, snp142common table.*
+  *Directory with dbSNP build 142 common SNP files (GTF format), one per chromosome. Human: X = 23, Y = 24. Source: UCSC Table Browser, snp142common table. Included in docker image.*
 - `GCF_000001405.26/GCF_000001405.26_GRCh38_genomic.fna`  
-  *NCBI reference genome FASTA file*  
-  Download:  
-  `ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/001/405/GCF_000001405.26_GRCh38.p13`
-
-### Input Directories
-- `vcf_dir/`  
-  *VCF files from GATK variant calling*
-- `bam_dir/`  
-  *BAM files from STAR alignment*
-- `rsem_dir/`  
-  *RSEM output files (should contain `genes.results` and `isoforms.results`)*
-- `fastq_dir/`  
-  *FASTQ files from sequencing run (bulk RNAseq)*
-
-### Additional Arguments
-- `--project`  
-  *Name of project for this batch; appears in plots*
-- `--output_dir`  
-  *Path to desired output directory (created if it doesn't exist; default: `./outputs`)*
-
-**Note:**  
-File base names should be unique for each sample and consistent across file types  
-(e.g., `sample1.vcf`, `sample1.bam`, `sample1.genes.results`, `sample1_R1.fastq.gz`, `sample1_R2.fastq.gz`)
+  *NCBI reference genome FASTA file; included in docker image, but can also be downloaded from `ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/001/405/GCF_000001405.26_GRCh38.p13`*
 
 ### Tools
 
@@ -70,10 +70,34 @@ The pipeline depends on the following command line tools:
 - `samtools`
 - `bcftools`
 - `vcftools`
-- `aws` CLI (only needed if PACNet training files are missing)
 
 Ensure these tools are installed or available via a module system (ex. HPC users). For AWS CLI, make sure v2 is installed.
 R packages will be included as part of the docker image.
+
+R packages included in the docker image:
+- devtools
+- eSNPKaryotyping
+- zoo
+- gplots
+- patchwork
+- ggplot2
+- optparse
+- dplyr
+- data.table
+- tidyr
+- fuzzyjoin
+- stringr
+- biomaRt
+- purrr
+- CellNet (tarball included in docker image)
+- cancerCellNet
+- jsonlite
+- edgeR
+
+Python packages included in the docker image:
+- os
+- json
+- logzero (logger)
 
 ---
 
@@ -82,8 +106,8 @@ R packages will be included as part of the docker image.
 The pipeline expects separate **reference** and **input** directories:
 
 project/
-- ├── refs/ # Reference files (unchanging across runs)
-- ├── inputs/ # Input files for a specific sample run
+- ├── refs/ # Reference files (unchanging across runs; only need to provide cosmic ref file)
+- ├── inputs/ # Input files for a run (pipeline will loop over samples)
 - ├── outputs/ # Output directory
 - ├── modules/ # Contains all pipeline modules
 - └── pipeline_runner.sh
@@ -92,12 +116,27 @@ project/
 
 ## Inputs
 
+### Input Directories
+- `fastq_dir/`  
+  *FASTQ files from sequencing run (bulk RNAseq)*
+- `--output_dir`  
+  *Path to desired output directory (created if it doesn't exist; default: `./outputs`)*
+
+### Additional Arguments
+- `--project`  
+  *Name of project for this batch; appears in plots*
+
+**Note:**  
+File base names should be unique for each sample and consistent across file types  
+(e.g., `sample1.vcf`, `sample1.bam`, `sample1.genes.results`, `sample1_R1.fastq.gz`, `sample1_R2.fastq.gz`)
+
+
 ### Required Directories
 
 | Argument         | Description                                                                 | Default                        | Required |
 |-----------------|-----------------------------------------------------------------------------|--------------------------------|----------|
 | `--ref_dir`      | Directory containing reference files                                        | `/refs`                        | Yes      |
-| `--inputs_dir`   | Directory containing input files for a run                                  | `./inputs`                     | Yes      |
+| `--fastq_dir`   | Directory containing input files (fastq.gz sequencing files) for a run                                  | `./fastq`                     | Yes      |
 | `--output_dir`   | Output directory                                                           | `./outputs`                    | No       |
 | `--project`      | Project name                                                               | `default_project`              | No       |
 
@@ -162,11 +201,9 @@ project/
 Example command:
 
 ```bash
-bash pipeline_runner.sh \
-    --project my_project \
-    --ref_dir /path/to/refs \
-    --vcf_dir /path/to/vcfs \
-    --rsem_dir /path/to/RSEM \
-    --bam_dir /path/to/bams \
-    --fastq_dir /path/to/fastqs \
-    --output_dir /path/to/outputs
+bash ./run_pipeline.sh \
+    -f ./my_fastqs \
+    -o ./results \
+    -p "My_Project" \
+    -c ./Cosmic_CancerGeneCensus_Tsv_v101_GRCh37.tar
+

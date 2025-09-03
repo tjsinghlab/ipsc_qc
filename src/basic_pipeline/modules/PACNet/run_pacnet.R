@@ -16,31 +16,49 @@ suppressPackageStartupMessages({
 
 # ---------------- CLI options ----------------
 option_list <- list(
+  make_option(c("-s", "--sample"), type="character", help="Sample name (basename before underscore in FASTQ)"),
   make_option(c("-p", "--project"), type="character", default="default_project",
               help="Project name"),
   make_option(c("-o", "--output_dir"), type="character", default="outputs",
-              help="Output directory"),
-  make_option(c("-i", "--input_dir"), type="character", default="rsem_outputs",
-              help="Directory with RSEM outputs"),
+              help="Top-level output directory"),
   make_option(c("-r", "--ref"), type="character", default="ref",
               help="Reference directory for PACNet")
 )
 
 opt <- parse_args(OptionParser(option_list=option_list))
+
+if (is.null(opt$sample)) {
+  stop("Error: --sample could not be parsed")
+}
+
+sample_name <- opt$sample
 project_name <- opt$project
 output_dir <- opt$output_dir
-input_dir <- opt$input_dir
 ref_dir <- opt$ref
 
+# ---------------- Locate RSEM outputs ----------------
+# Our WDL pipeline outputs are organized like:
+#   output_dir/wdl_outputs/<sample>/rsem/
+#
+# So we find the RSEM folder for this sample:
+rsem_dir <- file.path(output_dir, "wdl_outputs", sample_name, "rsem")
+
+if (!dir.exists(rsem_dir)) {
+  stop(paste("Could not find RSEM genes.results files for sample", sample_name, "in", rsem_dir))
+}
+
+message(">>> Reading RSEM outputs for sample: ", sample_name)
+
 # ---------------- Prepare folders ----------------
-pacnet_dir <- file.path(output_dir, "pacnet")
-if (!dir.exists(pacnet_dir)) dir.create(pacnet_dir, recursive = TRUE)
+sample_outdir <- file.path(output_dir, sample_name, "pacnet")
+if (!dir.exists(sample_outdir)) dir.create(sample_outdir, recursive = TRUE)
 
 # ---------------- Step 1: Build Expression Matrix ----------------
-message(">>> Reading RSEM outputs")
-
-mats <- lapply(list.files(input_dir, pattern = "genes", full.names = TRUE), fread)
-names(mats) <- str_split_i(list.files(input_dir, pattern = "genes"), "[.]", 1)
+mats <- lapply(list.files(rsem_dir, pattern = "genes", full.names = TRUE), fread)
+if (length(mats) == 0) {
+  stop("No RSEM gene files found for sample: ", sample_name)
+}
+names(mats) <- str_split_i(list.files(rsem_dir, pattern = "genes"), "[.]", 1)
 
 genes <- lapply(mats, function(x) x$gene_id)
 mart  <- useDataset("hsapiens_gene_ensembl", useMart("ensembl"))
@@ -57,8 +75,9 @@ mats <- Map(function(og_map, new_genes) {
   full_join(og_map, new_genes, by = "ensembl_gene_id")
 }, mats, meta.genes)
 
+# same filtering as before...
 mats <- lapply(mats, function(df) {
-  df <- df[,-c(1,4)] # drop ensembl + description
+  df <- df[,-c(1,4)]
   df[df == ""] <- NA
   df <- df[complete.cases(df), ]
   df <- df[!grepl("^[0-9]", df$external_gene_name) &
@@ -76,7 +95,7 @@ names(mats) <- sapply(names(mats), function(name) {
   if (grepl("^[0-9]", name)) paste0("S", name) else name
 })
 
-# Process duplicates
+# collapse duplicates
 process_df <- function(df) {
   duplicates <- duplicated(df$external_gene_name) | duplicated(df$external_gene_name, fromLast = TRUE)
   df <- df[!(duplicates & df[[1]] == 0), ]
@@ -107,8 +126,8 @@ metadata <- setNames(
   c("sample_name", "description1")
 )
 
-write.csv(full_matrix, file.path(output_dir, "query_matrix.csv"))
-write.csv(metadata,    file.path(output_dir, "query_meta.csv"))
+write.csv(full_matrix, file.path(sample_outdir, "query_matrix.csv"))
+write.csv(metadata,    file.path(sample_outdir, "query_meta.csv"))
 
 # ---------------- Step 2: PACNet Classifier ----------------
 message(">>> Running PACNet classifier")
@@ -116,8 +135,8 @@ message(">>> Running PACNet classifier")
 expTrain <- utils_loadObject(file.path(ref_dir, "Hs_expTrain_Jun-20-2017.rda"))
 stTrain  <- utils_loadObject(file.path(ref_dir, "Hs_stTrain_Jun-20-2017.rda"))
 
-queryExpDat  <- read.csv(file.path(output_dir, "query_matrix.csv"), row.names = 1)
-querySampTab <- read.csv(file.path(output_dir, "query_meta.csv"), row.names = 1)
+queryExpDat  <- read.csv(file.path(sample_outdir, "query_matrix.csv"), row.names = 1)
+querySampTab <- read.csv(file.path(sample_outdir, "query_meta.csv"), row.names = 1)
 
 iGenes <- intersect(rownames(expTrain), rownames(queryExpDat))
 expTrain <- expTrain[iGenes, ]
@@ -143,15 +162,15 @@ my_classifier <- broadClass_train(
   quickPairs = TRUE
 )
 
-save(my_classifier, file = file.path(pacnet_dir, "classifier.rda"))
+save(my_classifier, file = file.path(sample_outdir, "classifier.rda"))
 
-# Validation heatmap
+# validation heatmap
 classMatrix <- broadClass_predict(my_classifier$cnProc, expValSubset, nrand = 60)
 stValRand <- addRandToSampTab(classMatrix, stValSubset, desc = "description1", id = "sra_id")
 grps <- as.vector(stValRand$description1)
 names(grps) <- rownames(stValRand)
 
-png(file.path(pacnet_dir, "classification_validation_hm.png"), height=6, width=10, units="in", res=300)
+png(file.path(sample_outdir, "classification_validation_hm.png"), height=6, width=10, units="in", res=300)
 ccn_hmClass(classMatrix, grps=grps, fontsize_row=10)
 dev.off()
 
@@ -160,100 +179,16 @@ classMatrixEx <- broadClass_predict(my_classifier$cnProc, queryExpDat, nrand = 1
 grp_names1 <- c(as.character(querySampTab$description1), rep("random", 10))
 names(grp_names1) <- c(as.character(rownames(querySampTab)), paste0("rand_", c(1:10)))
 classMatrixEx <- classMatrixEx[, names(grp_names1)]
-write.csv(classMatrixEx, file.path(pacnet_dir, "classification_scores.csv"))
-
-######### Generate Heatmap #########
-#Heatmap code adapted from pacnet_utils heatmapRef function)
-heatmapRef_split <- function(c_scoresMatrix, sampTab) {
-  melted_tab = data.frame(
-    "classificationScore" = numeric(),
-    "sampleName" = character(),
-    "tissueType" = character(),
-    "description" = character(),
-    stringsAsFactors = FALSE
-  )
-  for (sampleName in colnames(c_scoresMatrix)) {
-    temp_cscore = c_scoresMatrix[, sampleName]
-    # Handle metadata
-    if (sampleName %in% rownames(sampTab)) {
-      samp_descrip <- sampTab[sampleName, "description1"]
-    } else {
-      samp_descrip <- "random"
-    }
-    tempTab = data.frame(
-      "classificationScore" = temp_cscore,
-      "sampleName" = sampleName,
-      "tissueType" = rownames(c_scoresMatrix),
-      "description" = samp_descrip,
-      stringsAsFactors = FALSE
-    )
-    melted_tab = rbind(melted_tab, tempTab)
-  }
-  #Label added randoms
-  melted_tab$isRandom <- melted_tab$description == "random" | melted_tab$sampleName == "random"
-  melted_tab$tissueType <- factor(
-    melted_tab$tissueType,
-    levels = sort(unique(melted_tab$tissueType), decreasing = TRUE)
-  )
-  # color palette
-  cools <- colorRampPalette(c("black", "limegreen", "yellow"))(100)
-  #Plot for query data
-  p1 <- ggplot(subset(melted_tab, !isRandom), aes(x = sampleName, y = tissueType, fill = classificationScore)) +
-    geom_tile(color = "white") +
-    scale_fill_gradient2(
-      low = cools[1],
-      high = cools[length(cools)],
-      mid = cools[length(cools)/2],
-      midpoint = 0.5,
-      limit = c(0, 1),
-      space = "Lab",
-      name = "Classification Score"
-    ) +
-    xlab("Samples") + ylab("Tissue Types") +
-    ggtitle("Query Samples") +
-    theme_minimal(base_size = 14) +
-    theme(
-      axis.text.x = element_text(angle = 45, hjust = 1, size = 12),
-      axis.text.y = element_text(size = 12),
-      plot.title = element_text(hjust = 0.5, size = 16, face = "bold")
-    )
-  #Plot for random controls
-  p2 <- ggplot(subset(melted_tab, isRandom), aes(x = sampleName, y = tissueType, fill = classificationScore)) +
-    geom_tile(color = "white") +
-    scale_fill_gradient2(
-      low = cools[1],
-      high = cools[length(cools)],
-      mid = cools[length(cools)/2],
-      midpoint = 0.5,
-      limit = c(0, 1),
-      space = "Lab",
-      name = "Classification Score"
-    ) +
-    xlab("Random Samples") + ylab("Tissue Types") +
-    ggtitle("Random Controls") +
-    theme_minimal(base_size = 14) +
-    theme(
-      axis.text.x = element_blank(),
-      axis.ticks.x = element_blank(),
-      axis.text.y = element_text(size = 12),
-      plot.title = element_text(hjust = 0.5, size = 16, face = "bold")
-    )
-  p <- p1 + p2 + plot_layout(ncol = 2, widths = c(2, 1))
-  return(p)
-}
-
-png(file.path(pacnet_dir, "heatmapEx.png"), height=12, width=20, units="in", res=300)
-heatmapRef_split(classMatrixEx, querySampTab)
-dev.off()
+write.csv(classMatrixEx, file.path(sample_outdir, "classification_scores.csv"))
 
 # ---------------- Step 3: Metrics JSON ----------------
 metrics <- list(
   project = project_name,
-  n_samples = ncol(queryExpDat),
-  n_genes   = nrow(queryExpDat),
+  sample  = sample_name,
+  n_genes = nrow(queryExpDat),
   classifier_trees = 2000,
   top_genes = 100
 )
-write_json(metrics, file.path(pacnet_dir, "metrics.json"), pretty = TRUE)
+write_json(metrics, file.path(sample_outdir, "metrics.json"), pretty = TRUE)
 
-message(">>> PACNet pipeline completed. Outputs written to: ", pacnet_dir)
+message(">>> PACNet completed for sample: ", sample_name, " outputs in: ", sample_outdir)
