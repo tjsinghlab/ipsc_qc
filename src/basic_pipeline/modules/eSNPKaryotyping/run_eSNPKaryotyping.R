@@ -22,8 +22,8 @@ option_list <- list(
               help="Path to desired output directory", metavar="character"),
   make_option(c("-b", "--bam_dir"), type="character", default=file.path(cwd, "bams"),
               help="Directory containing BAM files", metavar="character"),
-  make_option(c("-r", "--ref_dir"), type="character", default=file.path(cwd, "ref"),
-              help="Reference directory (default: ./ref)", metavar="character"),
+  make_option("--ref_dir", type = "character", default = "/ref",
+            help = "Reference directory inside Docker image (default: /ref)")
   make_option(c("-v", "--vcf_dir"), type="character", default=file.path(cwd, "vcfs"),
               help="Directory containing VCF files", metavar="character"),
   make_option(c("-s", "--sample"), type="character", default=NULL,

@@ -5,21 +5,26 @@ set -euo pipefail
 # Script: filter_vcf_cosmic.sh
 # Purpose: Filter a VCF file against COSMIC data for selected genes (per-sample).
 # -----------------------------------------------------------------------------
-# Example usage:
+# Example usage (called from pipeline_runner.sh):
 #   ./filter_vcf_cosmic.sh \
 #     --sample SAMPLE1 \
 #     --vcf SAMPLE1.vcf.gz \
 #     --cosmic Cosmic_CancerGeneCensus_Tsv_v101_GRCh37.tar \
-#     --genes gene_list.txt \
 #     --output output_dir/cancer_mutations/results.tsv
+#
+# Note:
+#   - COSMIC tarball must be mounted/provided by user
+#   - Other ref files are preloaded in the Docker image at /ref/
 # -----------------------------------------------------------------------------
 
 # Defaults
 SAMPLE=""
 VCF_GZ_FILE=""
 COSMIC_TAR=""
-GENE_LIST=""
 OUTPUT_FILE=""
+
+# Gene list is fixed inside Docker image
+GENE_LIST="/ref/gene_list.txt"
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -27,10 +32,9 @@ while [[ $# -gt 0 ]]; do
     --sample) SAMPLE="$2"; shift 2 ;;
     --vcf) VCF_GZ_FILE="$2"; shift 2 ;;
     --cosmic) COSMIC_TAR="$2"; shift 2 ;;
-    --genes) GENE_LIST="$2"; shift 2 ;;
     --output) OUTPUT_FILE="$2"; shift 2 ;;
     -h|--help)
-      echo "Usage: $0 --sample SAMPLE --vcf input.vcf.gz --cosmic cosmic_data.tar --genes gene_list.txt --output results.tsv"
+      echo "Usage: $0 --sample SAMPLE --vcf input.vcf.gz --cosmic cosmic_data.tar --output results.tsv"
       exit 0
       ;;
     *)
@@ -41,7 +45,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Check required arguments
-if [[ -z "$SAMPLE" || -z "$VCF_GZ_FILE" || -z "$COSMIC_TAR" || -z "$GENE_LIST" || -z "$OUTPUT_FILE" ]]; then
+if [[ -z "$SAMPLE" || -z "$VCF_GZ_FILE" || -z "$COSMIC_TAR" || -z "$OUTPUT_FILE" ]]; then
   echo "Error: Missing required arguments."
   echo "Run with --help for usage."
   exit 1
@@ -80,7 +84,7 @@ TEMP_VCF=$(mktemp -t vcf_${SAMPLE}_XXXX)
 echo "[INFO][$SAMPLE] Decompressing VCF..."
 zcat "$VCF_GZ_FILE" | grep -v '^#' > "$TEMP_VCF"
 
-# Filter COSMIC for selected genes
+# Filter COSMIC for selected genes (from /ref/gene_list.txt inside image)
 echo "[INFO][$SAMPLE] Filtering COSMIC for genes in $GENE_LIST..."
 grep -F -f "$GENE_LIST" "$COSMIC_FILE" > "${TEMP_DIR}/filtered_cosmic.tmp"
 

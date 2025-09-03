@@ -14,5 +14,5 @@
     "/ref/gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.known_indels.vcf.gz.tbi"
   ],
   "RNAseq.annotationsGTF": "/ref/gencode.v39.GRCh38.genes.collapsed_only.gtf",
-  "RNAseq.gatk4_docker": "/ref/images/gatk_4.6.1.0.sif"
+  "RNAseq.gatk4_docker": "/ref/gatk_4.6.1.0.sif"
 }

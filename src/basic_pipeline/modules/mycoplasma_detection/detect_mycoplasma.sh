@@ -5,14 +5,12 @@ set -euo pipefail
 # -------------------------------
 # Parse named arguments
 # -------------------------------
-REF_DIR=""
 FASTQ_DIR=""
 OUTPUT_DIR=""
 SAMPLE=""
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --ref_dir) REF_DIR="$2"; shift 2 ;;
         --fastq_dir) FASTQ_DIR="$2"; shift 2 ;;
         --output_dir) OUTPUT_DIR="$2"; shift 2 ;;
         --sample) SAMPLE="$2"; shift 2 ;;
@@ -26,21 +24,22 @@ if [[ -z "$SAMPLE" ]]; then
     exit 1
 fi
 
-for dir in "$REF_DIR" "$FASTQ_DIR"; do
-    [[ -d "$dir" ]] || { echo "[ERROR] Directory not found: $dir"; exit 1; }
-done
+[[ -d "$FASTQ_DIR" ]] || { echo "[ERROR] Directory not found: $FASTQ_DIR"; exit 1; }
 
 SAMPLE_OUT="$OUTPUT_DIR/mycoplasma/$SAMPLE"
 mkdir -p "$SAMPLE_OUT"
 
 # -------------------------------
-# Reference genome
+# Reference genome (from Docker image at /ref/)
 # -------------------------------
+REF_DIR="/ref"
 GENOME_FILE="GCF_000027325.1_ASM2732v1_genomic.fna.gz"
 GENOME_PATH="$REF_DIR/$GENOME_FILE"
-GENOME_URL="https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/027/325/GCF_000027325.1_ASM2732v1/$GENOME_FILE"
 
-[[ -f "$GENOME_PATH" ]] || wget -O "$GENOME_PATH" "$GENOME_URL"
+if [[ ! -f "$GENOME_PATH" ]]; then
+    echo "[ERROR] Reference genome not found inside Docker image: $GENOME_PATH"
+    exit 1
+fi
 
 GENOME_REF="$SAMPLE_OUT/mycoplasma_genome.fna"
 gunzip -c "$GENOME_PATH" > "$GENOME_REF"

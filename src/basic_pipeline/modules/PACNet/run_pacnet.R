@@ -21,8 +21,8 @@ option_list <- list(
               help="Project name"),
   make_option(c("-o", "--output_dir"), type="character", default="outputs",
               help="Top-level output directory"),
-  make_option(c("-r", "--ref"), type="character", default="ref",
-              help="Reference directory for PACNet")
+  make_option("--ref_dir", type = "character", default = "/ref",
+            help = "Reference directory inside Docker image (default: /ref)")
 )
 
 opt <- parse_args(OptionParser(option_list=option_list))
@@ -37,17 +37,13 @@ output_dir <- opt$output_dir
 ref_dir <- opt$ref
 
 # ---------------- Locate RSEM outputs ----------------
-# Our WDL pipeline outputs are organized like:
-#   output_dir/wdl_outputs/<sample>/rsem/
-#
-# So we find the RSEM folder for this sample:
 rsem_dir <- file.path(output_dir, "wdl_outputs", sample_name, "rsem")
 
 if (!dir.exists(rsem_dir)) {
   stop(paste("Could not find RSEM genes.results files for sample", sample_name, "in", rsem_dir))
 }
 
-message(">>> Reading RSEM outputs for sample: ", sample_name)
+message("Reading RSEM outputs for sample: ", sample_name)
 
 # ---------------- Prepare folders ----------------
 sample_outdir <- file.path(output_dir, sample_name, "pacnet")
@@ -75,7 +71,7 @@ mats <- Map(function(og_map, new_genes) {
   full_join(og_map, new_genes, by = "ensembl_gene_id")
 }, mats, meta.genes)
 
-# same filtering as before...
+# Removing repetitive and irrelevant genes
 mats <- lapply(mats, function(df) {
   df <- df[,-c(1,4)]
   df[df == ""] <- NA
@@ -95,7 +91,7 @@ names(mats) <- sapply(names(mats), function(name) {
   if (grepl("^[0-9]", name)) paste0("S", name) else name
 })
 
-# collapse duplicates
+# Collapse duplicates
 process_df <- function(df) {
   duplicates <- duplicated(df$external_gene_name) | duplicated(df$external_gene_name, fromLast = TRUE)
   df <- df[!(duplicates & df[[1]] == 0), ]
@@ -164,7 +160,7 @@ my_classifier <- broadClass_train(
 
 save(my_classifier, file = file.path(sample_outdir, "classifier.rda"))
 
-# validation heatmap
+# Validation heatmap
 classMatrix <- broadClass_predict(my_classifier$cnProc, expValSubset, nrand = 60)
 stValRand <- addRandToSampTab(classMatrix, stValSubset, desc = "description1", id = "sra_id")
 grps <- as.vector(stValRand$description1)

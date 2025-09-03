@@ -37,7 +37,7 @@ task fastqc {
     }
 
     runtime {
-        singularity: "/gpfs/commons/groups/singh_lab/resources/RNAseq/gtex_rnaseq_V10.sif"
+        singularity: "/ref/gtex_rnaseq_V10.sif"
         memory: "${memory}GB"
         disks: "local-disk ${disk_space} HDD"
         cpu: "${num_threads}"

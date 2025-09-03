@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # ===========================================
-# CONFIG / DEFAULTS
+# Configuration
 # ===========================================
 PROJECT="Project [$(date '+%a %b %d %Y %H:%M')]"
 OUTPUT_DIR="$(pwd)/ipsc_qc_outputs"
@@ -14,7 +14,7 @@ PY_RUNNER1="runner_wdl_stage1.py"   # generates BAMs
 PY_RUNNER2="runner_wdl_stage2.py"   # generates VCF + RSEM
 
 # ===========================================
-# USAGE
+# Usage
 # ===========================================
 usage() {
     echo "Usage: pipeline_runner.sh [options]"
@@ -31,7 +31,7 @@ usage() {
 }
 
 # ===========================================
-# ARG PARSING
+# Arguments
 # ===========================================
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -46,7 +46,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 # ===========================================
-# VALIDATION
+# Input check
 # ===========================================
 if [[ -z "$FASTQ_DIR" ]]; then
     echo "[ERROR] Missing required argument: --fastq_dir"
@@ -58,7 +58,7 @@ LOG_DIR="$OUTPUT_DIR/logs"
 mkdir -p "$LOG_DIR"
 
 # ===========================================
-# COLLECT SAMPLES (based on FASTQ _R1/_R2 pairs)
+# Identify samples (based on FASTQ _R1/_R2 pairs)
 # ===========================================
 SAMPLES=()
 for fq in "${FASTQ_DIR}"/*_R1.fastq.gz; do
@@ -69,12 +69,10 @@ done
 echo "[INFO] Found ${#SAMPLES[@]} samples: ${SAMPLES[*]}"
 
 # ===========================================
-# MAIN LOOP
+# Loop over samples
 # ===========================================
 for sample in "${SAMPLES[@]}"; do
-    echo "==========================================="
     echo "[INFO] Processing sample: $sample"
-    echo "==========================================="
 
     sample_outdir="$OUTPUT_DIR/$sample"
     mkdir -p "$sample_outdir"
@@ -83,33 +81,28 @@ for sample in "${SAMPLES[@]}"; do
     fq2="${FASTQ_DIR}/${sample}_R2.fastq.gz"
 
     # ------------------------------------------------
-    # STEP 1: Run WDL stage 1 (BAM generation)
+    # STEP 1: Run bulk RNA pre-processing
     # ------------------------------------------------
     echo "[STEP] Running WDL stage 1 for $sample..."
     ( python3 "$PY_RUNNER1" --fastq1 "$fq1" --fastq2 "$fq2" --outdir "$sample_outdir" > "$LOG_DIR/${sample}_wdl1.log" 2>&1 )
     bam_file="$sample_outdir/${sample}.bam"
     bai_file="${bam_file}.bai"
-
-    if [[ ! -f "$bam_file" ]]; then
-        echo "[ERROR] BAM not found for $sample. Skipping..."
-        continue
-    fi
+    rsem_file="$sample_outdir/RSEM_outputs/${sample}.rsem.genes.results.gz"
 
     # ------------------------------------------------
-    # STEP 2: Run WDL stage 2 (VCF + RSEM generation)
+    # STEP 2: GATK variant calling
     # ------------------------------------------------
     echo "[STEP] Running WDL stage 2 for $sample..."
     ( python3 "$PY_RUNNER2" --bam "$bam_file" --bai "$bai_file" --outdir "$sample_outdir" > "$LOG_DIR/${sample}_wdl2.log" 2>&1 )
     vcf_file="$sample_outdir/${sample}.vcf"
-    rsem_file="$sample_outdir/${sample}.rsem"
-
-    if [[ ! -f "$vcf_file" || ! -f "$rsem_file" ]]; then
-        echo "[ERROR] VCF or RSEM genes file not found for $sample. Skipping..."
+    
+    if [[ ! -f "$vcf_file" ]]; then
+        echo "[ERROR] VCF file not found for $sample. Skipping..."
         continue
     fi
 
     # ------------------------------------------------
-    # STEP 3: Run downstream modules
+    # STEP 3: Run pipeline modules
     # ------------------------------------------------
     echo "[STEP] Running PACNet for $sample..."
     Rscript modules/PACNet/run_pacnet.R \
@@ -151,4 +144,4 @@ for sample in "${SAMPLES[@]}"; do
     echo "[DONE] Finished processing $sample. Results in $sample_outdir"
 done
 
-echo "[INFO] Pipeline completed. All results in $OUTPUT_DIR"
+echo "[INFO] Pipeline completed. All results written to $OUTPUT_DIR"

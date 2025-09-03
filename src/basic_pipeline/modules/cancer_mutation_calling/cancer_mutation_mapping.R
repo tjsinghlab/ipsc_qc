@@ -16,8 +16,8 @@ suppressPackageStartupMessages({
 option_list <- list(
   make_option("--sample", type = "character", default = NULL,
               help = "Sample name (used for labeling outputs)", metavar = "character"),
-  make_option("--ref_dir", type = "character", default = "./ref",
-              help = "Reference directory (default: ./ref)", metavar = "character"),
+  make_option("--ref_dir", type = "character", default = "/ref",
+            help = "Reference directory inside Docker image (default: /ref)"),
   make_option("--vcf", type = "character", default = NULL,
               help = "VCF file for this sample", metavar = "character"),
   make_option("--output_dir", type = "character", default = ".",

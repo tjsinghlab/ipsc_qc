@@ -19,6 +19,10 @@ This pipeline expects outputs from STAR alignment, RSEM, and GATK variant callin
 
 ## Requirements
 ### Reference Files (place in `ref/` directory; default is ./ref)
+#### Must be provided by user
+- `Cosmic_CancerGeneCensus_Tsv_v101_GRCh37.tar`  
+  *Cosmic Database; MUST BE DOWNLOADED BY USER AND INCLUDED IN REF_DIR ARGUMENT*
+#### Included in docker image
 - `star_index_oh75`
   *reference files for STAR; included in docker image*
 - `rsem_reference`
@@ -47,8 +51,6 @@ This pipeline expects outputs from STAR alignment, RSEM, and GATK variant callin
   *annotationsGTF; included in docker image*
 - `images/gatk_4.6.1.0.sif`
   *gatk4_docker; included in docker image*
-- `Cosmic_CancerGeneCensus_Tsv_v101_GRCh37.tar`  
-  *Cosmic Database; MUST BE DOWNLOADED BY USER AND INCLUDED IN REF_DIR ARGUMENT*
 - `genes.txt`  
   *List of genes of interest (default: BRCA1, BRCA2, TP53, BCOR, EGFR); included in docker image*
 - `GCF_000027325.1_ASM2732v1_genomic.fna.gz`  
