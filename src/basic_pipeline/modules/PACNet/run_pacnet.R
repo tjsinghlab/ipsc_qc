@@ -37,16 +37,16 @@ output_dir <- opt$output_dir
 ref_dir <- opt$ref
 
 # ---------------- Locate RSEM outputs ----------------
-rsem_dir <- file.path(output_dir, "wdl_outputs", sample_name, "rsem")
+rsem_dir <- file.path(output_dir, "RSEM_outputs")
 
 if (!dir.exists(rsem_dir)) {
-  stop(paste("Could not find RSEM genes.results files for sample", sample_name, "in", rsem_dir))
+  stop(paste("Could not find RSEM genes.results files for sample", sample_name, "at", rsem_dir))
 }
 
 message("Reading RSEM outputs for sample: ", sample_name)
 
 # ---------------- Prepare folders ----------------
-sample_outdir <- file.path(output_dir, sample_name, "pacnet")
+sample_outdir <- file.path(output_dir, "pacnet")
 if (!dir.exists(sample_outdir)) dir.create(sample_outdir, recursive = TRUE)
 
 # ---------------- Step 1: Build Expression Matrix ----------------

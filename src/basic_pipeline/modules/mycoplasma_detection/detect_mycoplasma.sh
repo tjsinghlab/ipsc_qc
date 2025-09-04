@@ -10,12 +10,20 @@ OUTPUT_DIR=""
 SAMPLE=""
 
 while [[ $# -gt 0 ]]; do
-    case "$1" in
-        --fastq_dir) FASTQ_DIR="$2"; shift 2 ;;
-        --output_dir) OUTPUT_DIR="$2"; shift 2 ;;
-        --sample) SAMPLE="$2"; shift 2 ;;
-        *) echo "[ERROR] Unknown argument: $1"; exit 1 ;;
-    esac
+  case "$1" in
+    --fastq) FASTQ_DIR="$2"; shift 2 ;;
+    --output_dir) OUTPUT_DIR="$2"; shift 2 ;;
+    --sample) SAMPLE="$2"; shift 2 ;;
+    --ref_dir) REF_DIR="$2"; shift 2 ;;
+    -h|--help)
+      echo "Usage: $0 --fastq Fastq files for sample --output_dir directory to sample-specific output directory --sample Sample name --ref_dir Reference directory (from Docker image)"
+      exit 0
+      ;;
+    *)
+      echo "Unknown argument: $1"
+      exit 1
+      ;;
+  esac
 done
 
 # Validate inputs
@@ -26,7 +34,7 @@ fi
 
 [[ -d "$FASTQ_DIR" ]] || { echo "[ERROR] Directory not found: $FASTQ_DIR"; exit 1; }
 
-SAMPLE_OUT="$OUTPUT_DIR/mycoplasma/$SAMPLE"
+SAMPLE_OUT="$OUTPUT_DIR/mycoplasma"
 mkdir -p "$SAMPLE_OUT"
 
 # -------------------------------

@@ -1,10 +1,10 @@
 # ----------------------
-# Pinned R version for reproducibility
+# Base image: R with version pinned
 # ----------------------
 FROM rocker/r-ver:4.3.1
 
 LABEL maintainer="Kelly Jakubiak <kjakubiak@nygenome.org>"
-LABEL description="RNA-seq pipeline image with STAR, RSEM, GATK, PACNet, eSNPKaryotyping, mycoplasma detection, and per-sample analysis"
+LABEL description="Bulk RNA-seq pipeline with pre-processing, GATK germline variant calling, and QC modules."
 
 # ----------------------
 # System dependencies
@@ -18,29 +18,27 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # ----------------------
-# CRAN snapshot for R packages
+# R packages
 # ----------------------
 ENV CRAN_REPO=https://packagemanager.posit.co/cran/2024-01-01
-RUN R -e "install.packages(c('devtools','zoo','gplots','patchwork','ggplot2','optparse','dplyr','data.table','tidyr','fuzzyjoin','stringr','biomaRt','purrr','jsonlite','edgeR','rmarkdown','knitr'), repos='https://cloud.r-project.org/')"
+RUN R -e "install.packages(c('devtools','zoo','gplots','patchwork','ggplot2','optparse','dplyr','data.table','tidyr','fuzzyjoin','stringr','biomaRt','purrr','jsonlite','edgeR','rmarkdown','knitr'), repos='${CRAN_REPO}')"
 
+# ----------------------
 # Install CellNet from tarball
+# ----------------------
 COPY CellNet_*.tar.gz /opt/CellNet/
 RUN R -e "install.packages('/opt/CellNet/CellNet_*.tar.gz', repos=NULL, type='source')"
 
 # ----------------------
-# Add Cromwell
+# Cromwell JAR
 # ----------------------
 ADD https://github.com/broadinstitute/cromwell/releases/download/86/cromwell-86.jar /pipeline/cromwell.jar
 
-# -------------------------------
-# Set up working directories
-# -------------------------------
+# ----------------------
+# Set up directories
+# ----------------------
 WORKDIR /workspace
-ENV COSMIC_DIR=/opt/ref
-ENV OUTPUT_DIR=/workspace/outputs
-ENV FASTQ_DIR=/workspace/fastq_dir
-
-RUN mkdir -p $REF_DIR $OUTPUT_DIR $FASTQ_DIR
+ENV REF_DIR=/ref
 
 # -------------------------------
 # Copy reference files into container
@@ -72,18 +70,22 @@ COPY ref/ /ref/
 # Cosmic database is **not included** due to licensing, user must mount/download
 # Cosmic_CancerGeneCensus_Tsv_v101_GRCh37.tar
 
-# Set environment variable so scripts know where refs are
-ENV REF_DIR=/ref
+# -------------------------------
+# Copy in all scripts from local /scripts into container /pipeline
+# -------------------------------
+COPY scripts/ /pipeline/
 
 # -------------------------------
-# Set PATH for tools
+# Make scripts executable
 # -------------------------------
-ENV PATH=/usr/bin:$PATH
+RUN chmod +x /pipeline/*.sh && chmod +x /pipeline/modules/*/*
 
 # ----------------------
-# Make shell scripts executable
+# Environment variables (user MUST override these when running container)
 # ----------------------
-RUN chmod +x /pipeline/*.sh
+# User must supply their own output and cosmic directories when running the container
+ENV OUTPUT_DIR=""
+ENV COSMIC_DIR=""
 
 # ----------------------
 # Default entrypoint

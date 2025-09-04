@@ -24,16 +24,14 @@ opt <- parse_args(OptionParser(option_list = option_list))
 project_name <- opt$project
 sample <- opt$sample
 output_dir <- opt$output_dir
-if (is.null(output_dir)) output_dir <- file.path(getwd(), "outputs")
-if (is.null(sample)) stop("Error: --sample must be provided")
-dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
+sample_outdir <- file.path(output_dir, "pacnet")
 
 message("[INFO] Processing sample: ", sample)
 
 # -------------------------------
 # Load per-sample count matrix
 # -------------------------------
-counts_file <- file.path(output_dir, paste0("bd2_matrix_", sample, ".csv"))
+counts_file  <- file.path(sample_outdir, "query_matrix.csv")
 if (!file.exists(counts_file)) stop("Counts file not found: ", counts_file)
 counts <- read.csv(counts_file, row.names = 1)
 
@@ -68,7 +66,7 @@ ggsave(filename = counts_pdf, plot = pca_plot_counts, width = 8, height = 6)
 # -------------------------------
 # PCA on PACNet ESC scores
 # -------------------------------
-scores_file <- file.path(output_dir, paste0("classification_scores_", sample, ".csv"))
+scores_file <- file.path(sample_outdir, "classification_scores.csv")
 if (!file.exists(scores_file)) stop("PACNet scores file not found: ", scores_file)
 scores <- read.csv(scores_file, row.names = 1)
 

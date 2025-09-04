@@ -16,27 +16,25 @@ suppressPackageStartupMessages({
 cwd <- getwd()
 
 option_list <- list(
-  make_option(c("-p", "--project"), type="character", default="default_project",
-              help="Project name", metavar="character"),
-  make_option(c("-o", "--output_dir"), type="character", default=file.path(cwd, "outputs"),
+  make_option("--output_dir", type="character", default=file.path(cwd, "outputs"),
               help="Path to desired output directory", metavar="character"),
-  make_option(c("-b", "--bam_dir"), type="character", default=file.path(cwd, "bams"),
-              help="Directory containing BAM files", metavar="character"),
+  make_option("--bam", type="character", default=file.path(cwd, "bams"),
+              help="Path to BAM file for sample", metavar="character"),
   make_option("--ref_dir", type = "character", default = "/ref",
-            help = "Reference directory inside Docker image (default: /ref)")
-  make_option(c("-v", "--vcf_dir"), type="character", default=file.path(cwd, "vcfs"),
-              help="Directory containing VCF files", metavar="character"),
-  make_option(c("-s", "--sample"), type="character", default=NULL,
+            help = "Reference directory inside Docker image (default: /ref)"),
+  make_option("--vcf", type="character", default=file.path(cwd, "vcfs"),
+              help="Path to VCF file for sample", metavar="character"),
+  make_option("--sample", type="character", default=NULL,
               help="Sample name", metavar="character")
 )
 
 opt <- parse_args(OptionParser(option_list=option_list))
 
-project_name <- opt$project
 output_dir <- opt$output_dir
+output_dir <- file.path(output_dir, "eSNPKaryotyping")
 ref_dir <- opt$ref_dir
-bam_dir <- opt$bam_dir
-vcf_dir <- opt$vcf_dir
+bam_dir <- opt$bam
+vcf_dir <- opt$vcf
 sample <- opt$sample
 
 if (is.null(sample)) stop("Error: --sample must be provided!")

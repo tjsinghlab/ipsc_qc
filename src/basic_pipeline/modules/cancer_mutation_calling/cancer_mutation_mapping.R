@@ -21,7 +21,9 @@ option_list <- list(
   make_option("--vcf", type = "character", default = NULL,
               help = "VCF file for this sample", metavar = "character"),
   make_option("--output_dir", type = "character", default = ".",
-              help = "Output directory for results", metavar = "character")
+              help = "Output directory for results", metavar = "character"),
+  make_option("--cosmic_dir", type = "character", default = ".",
+              help = "Path to cosmic database downloaded by user", metavar = "character")
 )
 
 opt <- parse_args(OptionParser(option_list = option_list))
@@ -34,15 +36,16 @@ sample_id <- opt$sample
 ref_dir <- opt$ref_dir
 vcf_file <- opt$vcf
 output_dir <- opt$output_dir
-dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
+cosmic_dir <- opt$cosmic_dir
+dir.create(file.path(output_dir, "cosmic_calling"), recursive = TRUE, showWarnings = FALSE)
 
 # -----------------------
 # Load COSMIC data
 # -----------------------
-cosmic_tar <- file.path(ref_dir, "Cosmic_CancerGeneCensus_Tsv_v101_GRCh38.tar")
-untar(cosmic_tar, exdir = ref_dir)
+cosmic_tar <- file.path(cosmic_dir, "Cosmic_CancerGeneCensus_Tsv_v101_GRCh38.tar")
+untar(cosmic_tar, exdir = cosmic_dir)
 
-cosmic_file <- file.path(ref_dir, "Cosmic_MutantCensus_v101_GRCh38.tsv.gz")
+cosmic_file <- file.path(cosmic_dir, "Cosmic_MutantCensus_v101_GRCh38.tsv.gz")
 if (!file.exists(cosmic_file)) {
   stop("COSMIC file not found in reference directory.")
 }

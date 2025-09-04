@@ -5,27 +5,28 @@ set -euo pipefail
 # Configuration
 # ===========================================
 PROJECT="Project [$(date '+%a %b %d %Y %H:%M')]"
-OUTPUT_DIR="$(pwd)/ipsc_qc_outputs"
-REF_DIR="$(pwd)/ref"
+REF_DIR="/ref"   # fixed inside Docker image
 FASTQ_DIR=""
+OUTPUT_DIR=""
+COSMIC_DIR=""
 
 # Paths to WDL runners
-PY_RUNNER1="runner_wdl_stage1.py"   # generates BAMs
-PY_RUNNER2="runner_wdl_stage2.py"   # generates VCF + RSEM
+PY_RUNNER1="/pipeline/modules/preprocessing/bulk_RNAseq_preprocess/run_wdl.py" 
+PY_RUNNER2="/pipeline/modules/preprocessing/GATK_variant_calling/gatk4-rna-germline-calling_run.py" 
 
 # ===========================================
 # Usage
 # ===========================================
 usage() {
-    echo "Usage: pipeline_runner.sh [options]"
+    echo "Usage: pipeline_runner.sh --fastq_dir PATH --output_dir PATH [--cosmic_dir PATH]"
     echo ""
     echo "Required arguments:"
     echo "  --fastq_dir PATH     Directory containing FASTQ files"
+    echo "  --output_dir PATH    Output directory for pipeline results"
     echo ""
     echo "Optional arguments:"
-    echo "  --ref_dir PATH       Reference directory (default: ./ref)"
+    echo "  --cosmic_dir PATH    Directory containing COSMIC references (if provided, runs mutation calling)"
     echo "  --project NAME       Project name (default: ${PROJECT})"
-    echo "  --output_dir PATH    Output directory (default: ./ipsc_qc_outputs)"
     echo ""
     exit 1
 }
@@ -36,9 +37,9 @@ usage() {
 while [[ $# -gt 0 ]]; do
     case $1 in
         --project)    PROJECT="$2"; shift ;;
-        --ref_dir)    REF_DIR="$2"; shift ;;
         --fastq_dir)  FASTQ_DIR="$2"; shift ;;
         --output_dir) OUTPUT_DIR="$2"; shift ;;
+        --cosmic_dir) COSMIC_DIR="$2"; shift ;;
         -h|--help)    usage ;;
         *) echo "[ERROR] Unknown option: $1"; usage ;;
     esac
@@ -48,8 +49,8 @@ done
 # ===========================================
 # Input check
 # ===========================================
-if [[ -z "$FASTQ_DIR" ]]; then
-    echo "[ERROR] Missing required argument: --fastq_dir"
+if [[ -z "$FASTQ_DIR" || -z "$OUTPUT_DIR" ]]; then
+    echo "[ERROR] --fastq_dir and --output_dir must be provided"
     usage
 fi
 
@@ -58,12 +59,12 @@ LOG_DIR="$OUTPUT_DIR/logs"
 mkdir -p "$LOG_DIR"
 
 # ===========================================
-# Identify samples (based on FASTQ _R1/_R2 pairs)
+# Identify samples
 # ===========================================
 SAMPLES=()
 for fq in "${FASTQ_DIR}"/*_R1.fastq.gz; do
     base=$(basename "$fq")
-    sample="${base%_R1.fastq.gz}"   # strip suffix
+    sample="${base%_R1.fastq.gz}"
     SAMPLES+=("$sample")
 done
 echo "[INFO] Found ${#SAMPLES[@]} samples: ${SAMPLES[*]}"
@@ -81,18 +82,18 @@ for sample in "${SAMPLES[@]}"; do
     fq2="${FASTQ_DIR}/${sample}_R2.fastq.gz"
 
     # ------------------------------------------------
-    # STEP 1: Run bulk RNA pre-processing
+    # STEP 1: Preprocessing
     # ------------------------------------------------
-    echo "[STEP] Running WDL stage 1 for $sample..."
+    echo "[STEP] Running bulk RNAseq pre-processing for $sample..."
     ( python3 "$PY_RUNNER1" --fastq1 "$fq1" --fastq2 "$fq2" --outdir "$sample_outdir" > "$LOG_DIR/${sample}_wdl1.log" 2>&1 )
     bam_file="$sample_outdir/${sample}.bam"
     bai_file="${bam_file}.bai"
     rsem_file="$sample_outdir/RSEM_outputs/${sample}.rsem.genes.results.gz"
 
     # ------------------------------------------------
-    # STEP 2: GATK variant calling
+    # STEP 2: Variant Calling
     # ------------------------------------------------
-    echo "[STEP] Running WDL stage 2 for $sample..."
+    echo "[STEP] Calling germline variants for $sample..."
     ( python3 "$PY_RUNNER2" --bam "$bam_file" --bai "$bai_file" --outdir "$sample_outdir" > "$LOG_DIR/${sample}_wdl2.log" 2>&1 )
     vcf_file="$sample_outdir/${sample}.vcf"
     
@@ -102,43 +103,47 @@ for sample in "${SAMPLES[@]}"; do
     fi
 
     # ------------------------------------------------
-    # STEP 3: Run pipeline modules
+    # STEP 3: QC Modules
     # ------------------------------------------------
     echo "[STEP] Running PACNet for $sample..."
-    Rscript modules/PACNet/run_pacnet.R \
-        --vcf "$vcf_file" --rsem "$rsem_file" --ref_dir "$REF_DIR" --output_dir "$sample_outdir" \
+    Rscript /pipeline/modules/PACNet/run_pacnet.R \
+        --rsem "$rsem_file" --ref_dir "$REF_DIR" --output_dir "$sample_outdir" --sample "$sample" --project "$PROJECT" \
         > "$LOG_DIR/pacnet_${sample}.log" 2>&1
 
-    echo "[STEP] Running COSMIC mutation calling for $sample..."
-    bash modules/cancer_mutation_calling/filter_vcf_on_cosmic.sh \
-        --vcf "$vcf_file" --ref_dir "$REF_DIR" --output_dir "$sample_outdir" \
-        > "$LOG_DIR/filtered_vcf_for_cosmic_${sample}.log" 2>&1
+    if [[ -n "$COSMIC_DIR" ]]; then
+        echo "[STEP] Running COSMIC mutation calling for $sample..."
+        bash /pipeline/modules/cancer_mutation_calling/filter_vcf_on_cosmic.sh \
+            --vcf "$vcf_file" --ref_dir "$REF_DIR" --cosmic_dir "$COSMIC_DIR" --output_dir "$sample_outdir" --sample "$sample" \
+            > "$LOG_DIR/filtered_vcf_for_cosmic_${sample}.log" 2>&1
 
-    Rscript modules/cancer_mutation_calling/cancer_mutation_mapping.R \
-        --vcf "$vcf_file" --ref_dir "$REF_DIR" --output_dir "$sample_outdir" \
-        > "$LOG_DIR/cancer_mutation_mapping_${sample}.log" 2>&1
+        Rscript /pipeline/modules/cancer_mutation_calling/cancer_mutation_mapping.R \
+            --vcf "$vcf_file" --ref_dir "$REF_DIR" --cosmic_dir "$COSMIC_DIR" --output_dir "$sample_outdir" --sample "$sample" \
+            > "$LOG_DIR/cancer_mutation_mapping_${sample}.log" 2>&1
+    else
+        echo "[INFO] Skipping COSMIC mutation calling (no --cosmic_dir provided)."
+    fi
 
     echo "[STEP] Running eSNPKaryotyping for $sample..."
-    Rscript modules/eSNPKaryotyping/run_eSNPKaryotyping.R \
-        --bam "$bam_file" --ref_dir "$REF_DIR" --output_dir "$sample_outdir" \
+    Rscript /pipeline/modules/eSNPKaryotyping/run_eSNPKaryotyping.R \
+        --vcf "$vcf_file" --bam "$bam_file" --ref_dir "$REF_DIR" --output_dir "$sample_outdir" --sample "$sample" \
         > "$LOG_DIR/ekaryo_${sample}.log" 2>&1
 
     echo "[STEP] Running Mycoplasma detection for $sample..."
-    bash modules/mycoplasma_detection/detect_mycoplasma.sh \
-        --bam "$bam_file" --ref_dir "$REF_DIR" --output_dir "$sample_outdir" \
+    bash /pipeline/modules/mycoplasma_detection/detect_mycoplasma.sh \
+        --fastq "$fq1" "$fq2" --ref_dir "$REF_DIR" --output_dir "$sample_outdir" --sample "$sample" \
         > "$LOG_DIR/mycoplasma_${sample}.log" 2>&1
 
     echo "[STEP] Running Outlier detection for $sample..."
-    Rscript modules/outlier_detection/outlier_detection.R \
-        --fastq "$fq1" "$fq2" --ref_dir "$REF_DIR" --output_dir "$sample_outdir" \
+    Rscript /pipeline/modules/outlier_detection/outlier_detection.R \
+        --output_dir "$sample_outdir" --sample "$sample" --project "$PROJECT" \
         > "$LOG_DIR/outliers_${sample}.log" 2>&1
 
     # ------------------------------------------------
     # STEP 4: Compile HTML summary
     # ------------------------------------------------
     echo "[STEP] Generating HTML summary for $sample..."
-    Rscript modules/report_builder/generate_html_summary.R \
-        --output_dir "$OUTPUT_DIR" --project "$PROJECT" \
+    Rscript /pipeline/modules/report_builder/generate_html_summary.R \
+        --output_dir "$OUTPUT_DIR" --project "$PROJECT" --sample "$sample" \
         > "$LOG_DIR/html_summary_${sample}.log" 2>&1
 
     echo "[DONE] Finished processing $sample. Results in $sample_outdir"
