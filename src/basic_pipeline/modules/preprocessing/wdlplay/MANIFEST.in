@@ -1,0 +1,8 @@
+include versioneer.py
+include wdlplay/_version.py
+exclude Makefile
+exclude requirements-dev.txt
+exclude notebook/**/*
+exclude src/**/*
+exclude .vscode/*
+global-exclude *.ipynb

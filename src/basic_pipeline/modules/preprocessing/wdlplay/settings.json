@@ -1,0 +1,12 @@
+{
+    "python.defaultInterpreterPath": "${env:HOME}/anaconda3/envs/wdlplay/bin/python",
+    "files.defaultLanguage": "python",
+    "cSpell.enableFiletypes": [
+        "!python"
+    ],
+    "python.dataScience.textOutputLimit": 2500,
+    "python.dataScience.alwaysScrollOnNewCell": true,
+    "python.dataScience.magicCommandsAsComments": true,
+    "cSpell.enabled": true,
+    "git.autofetch": true
+}

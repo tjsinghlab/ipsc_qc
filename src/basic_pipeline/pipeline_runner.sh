@@ -85,7 +85,7 @@ for sample in "${SAMPLES[@]}"; do
     # STEP 1: Preprocessing
     # ------------------------------------------------
     echo "[STEP] Running bulk RNAseq pre-processing for $sample..."
-    ( python3 "$PY_RUNNER1" --fastq1 "$fq1" --fastq2 "$fq2" --outdir "$sample_outdir" > "$LOG_DIR/${sample}_wdl1.log" 2>&1 )
+    ( python3 "$PY_RUNNER1" --fastq1 "$fq1" --fastq2 "$fq2" --output_dir "$sample_outdir" > "$LOG_DIR/${sample}_bulk_preprocess.log" 2>&1 )
     bam_file="$sample_outdir/${sample}.bam"
     bai_file="${bam_file}.bai"
     rsem_file="$sample_outdir/RSEM_outputs/${sample}.rsem.genes.results.gz"

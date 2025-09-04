@@ -1,0 +1,11 @@
+autopep8>=2.0.4
+versioneer>=0.29
+loguru>=0.7.2
+hail>=0.2.124
+findhere>=0.1.5
+datatracker>=0.2.5
+teamconnector>=0.1.8
+sparkhub>=0.2.3
+caper>=2.3.2
+#datatracker @ git+ssh://git@github.com/TarjinderSingh/datatracker@master#egg=datatracker
+#pyrunner @ git+ssh://git@github.com/TarjinderSingh/pyrunner@master#egg=pyrunner
