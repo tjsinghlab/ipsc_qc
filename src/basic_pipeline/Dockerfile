@@ -80,6 +80,11 @@ COPY scripts/ /pipeline/
 # -------------------------------
 RUN chmod +x /pipeline/*.sh && chmod +x /pipeline/modules/*/*
 
+# -------------------------------
+# Install wdlplay requirements
+# -------------------------------
+RUN make -C /pipeline/preprocessing/wdlplay/Makefile install
+
 # ----------------------
 # Environment variables (user MUST override these when running container)
 # ----------------------

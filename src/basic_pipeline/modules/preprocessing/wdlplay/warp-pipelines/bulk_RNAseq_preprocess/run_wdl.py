@@ -51,7 +51,7 @@ runner = wdlplayer(
 # Define workflow + inputs
 # ------------------------------------------------
 name = f"process_bulk_rna-{args.sample}"
-wdl = "/pipeline/workflows/RNAseq_pipeline_fastq.wdl"  # path inside container
+wdl = "/pipeline/modules/preprocessing/wdlplay/warp-pipelines/bulk_RNAseq_preprocess/RNAseq_pipeline_fastq.wdl"  # path inside container
 
 inputs = {
     "rnaseq_pipeline_fastq_workflow.fastqs": [args.fastq1, args.fastq2],
@@ -70,7 +70,7 @@ outfile = runner.submit(
     name=name,
     wdl=wdl,
     inputs=inputs,
-    server=True,
+    server=False,
     no_deepcopy=False
 )
 

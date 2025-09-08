@@ -50,7 +50,7 @@ wdl = 'gatk4-rna-best-practices.wdl'
 # construct inputs list
 inputs = json.load(open('gatk4-rna-germline-variant-calling.inputs.json'))
 
-bam_dir = "/path/to/star/bams/Mark_duplicates_outputs"
+bam_dir = "${outdir}Mark_duplicates_outputs"
 bams = sorted(os.listdir(bam_dir))
 bams = [b for b in bams if b.endswith(".bam")]
 
@@ -67,5 +67,5 @@ inputs_list = [inputs_list[i] for i in [1]]
 names = [name + "-" + str(i+1) for i in range(len(inputs_list))]
 
 #%%
-outfile = [runner.submit(name=n, wdl=wdl, inputs=i, server=True, no_deepcopy=False, check_metadata=False) for n,i in zip(names, inputs_list)]
+outfile = [runner.submit(name=n, wdl=wdl, inputs=i, server=False, no_deepcopy=False, check_metadata=False) for n,i in zip(names, inputs_list)]
 # %%
