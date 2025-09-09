@@ -7,12 +7,12 @@ set -euo pipefail
 PROJECT="Project [$(date '+%a %b %d %Y %H:%M')]"
 REF_DIR="/ref" #mounted to image by user
 FASTQ_DIR="/data" #mounted to image by user
-OUTPUT_DIR=""
-COSMIC_DIR=""
+OUTPUT_DIR="/output" #mounted to image by user
+COSMIC_DIR="/cosmic" #mounted to image by user
 
 # Paths to WDL runners
-PY_RUNNER1="/pipeline/modules/preprocessing/bulk_RNAseq_preprocess/run_wdl.py" 
-PY_RUNNER2="/pipeline/modules/preprocessing/GATK_variant_calling/gatk4-rna-germline-calling_run.py" 
+PY_RUNNER1="/pipeline/modules/preprocessing/wdlplay/warp-pipelines/bulk_RNAseq_preprocess/run_wdl.py" 
+PY_RUNNER2="/pipeline/modules/preprocessing/wdlplay/warp-pipelines/GATK_variant_calling/gatk4-rna-germline-calling_run.py" 
 
 # ===========================================
 # Usage
@@ -51,10 +51,10 @@ done
 # ===========================================
 # Input check
 # ===========================================
-if [[ -z "$FASTQ_DIR" || -z "$OUTPUT_DIR" || -z "$REF_DIR" ]]; then
-    echo "[ERROR] --fastq_dir, --output_dir, and --ref_dir must be provided"
-    usage
-fi
+# if [[ -z "$FASTQ_DIR" || -z "$OUTPUT_DIR" || -z "$REF_DIR" ]]; then
+#     echo "[ERROR] --fastq_dir, --output_dir, and --ref_dir must be provided"
+#     usage
+# fi
 
 mkdir -p "$OUTPUT_DIR"
 LOG_DIR="$OUTPUT_DIR/logs"
@@ -64,12 +64,22 @@ mkdir -p "$LOG_DIR"
 # Identify samples
 # ===========================================
 SAMPLES=()
-for fq in "${FASTQ_DIR}"/*_R1.fastq.gz; do
+shopt -s nullglob
+
+for fq in "${FASTQ_DIR}"/*_R1*.fastq.gz; do
     base=$(basename "$fq")
-    sample="${base%_R1.fastq.gz}"
+    # Remove everything from _R1 onward
+    sample="${base%%_R1*}"
     SAMPLES+=("$sample")
 done
+
+if [[ ${#SAMPLES[@]} -eq 0 ]]; then
+    echo "[ERROR] No FASTQ files found in $FASTQ_DIR"
+    exit 1
+fi
+
 echo "[INFO] Found ${#SAMPLES[@]} samples: ${SAMPLES[*]}"
+
 
 # ===========================================
 # Loop over samples
@@ -87,7 +97,7 @@ for sample in "${SAMPLES[@]}"; do
     # STEP 1: Preprocessing
     # ------------------------------------------------
     echo "[STEP] Running bulk RNAseq pre-processing for $sample..."
-    ( python3 "$PY_RUNNER1" --fastq1 "$fq1" --fastq2 "$fq2" --output_dir "$sample_outdir" > "$LOG_DIR/${sample}_bulk_preprocess.log" 2>&1 )
+    ( python3 "$PY_RUNNER1" \--fastq1 "$fq1" --fastq2 "$fq2" --output_dir "$sample_outdir" --sample "$sample" > "$LOG_DIR/${sample}_bulk_preprocess.log" 2>&1 )
     bam_file="$sample_outdir/${sample}.bam"
     bai_file="${bam_file}.bai"
     rsem_file="$sample_outdir/RSEM_outputs/${sample}.rsem.genes.results.gz"
@@ -96,7 +106,7 @@ for sample in "${SAMPLES[@]}"; do
     # STEP 2: Variant Calling
     # ------------------------------------------------
     echo "[STEP] Calling germline variants for $sample..."
-    ( python3 "$PY_RUNNER2" --bam "$bam_file" --bai "$bai_file" --outdir "$sample_outdir" > "$LOG_DIR/${sample}_wdl2.log" 2>&1 )
+    ( python3 "$PY_RUNNER2" --bam "$bam_file" --bai "$bai_file" --outdir "$sample_outdir" --sample "$sample" > "$LOG_DIR/${sample}_wdl2.log" 2>&1 )
     vcf_file="$sample_outdir/${sample}.vcf"
     
     if [[ ! -f "$vcf_file" ]]; then

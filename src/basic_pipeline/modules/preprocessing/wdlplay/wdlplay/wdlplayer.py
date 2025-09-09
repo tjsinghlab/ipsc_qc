@@ -80,15 +80,9 @@ class wdlplayer(object):
         self.version = 'debug' if 'VERSION' not in os.environ else os.environ['VERSION']
 
         # Define hostname and port
-        if hostname is None:
-            raise Exception('Hostname must be specified.')
-        else:
-            self.hostname = hostname
+        self.hostname = hostname
 
-        if port is None or isinstance(port, int) is False:
-            raise Exception('Port must be specified (as an integer).')
-        else:
-            self.port = port
+        self.port = port
 
         # Create outdir and basic .jobs file structure
         if not os.path.isdir(self.outdir) or not os.path.isdir(os.path.join(self.outdir, 'log', self.version)):

@@ -58,6 +58,7 @@ RUN chmod +x /pipeline/*.sh && chmod +x /pipeline/modules/*/*
 # Install wdlplay requirements
 # -------------------------------
 RUN make -C /pipeline/modules/preprocessing/wdlplay install
+RUN caper init slurm
 
 # ----------------------
 # Environment variables (user MUST override)

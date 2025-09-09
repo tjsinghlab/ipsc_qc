@@ -5,7 +5,7 @@ import argparse
 from logzero import logger
 from wdlplay.wdlplayer import wdlplayer
 from findhere import init_directories, set_cloud
-from datatracker import Tracker, Entry
+# from datatracker import Tracker, Entry
 
 # ------------------------------------------------
 # CLI arguments
@@ -25,13 +25,13 @@ os.makedirs(args.output_dir, exist_ok=True)
 os.environ['VERSION'] = '0.1.0'
 cloudir, localdir, filedir = init_directories(__file__)
 
-tr = Tracker()
-entry = Entry(
-    tag='eqtl',
-    description='prep eQTL',
-    category='Analysis',
-    module='eQTL'
-)
+# tr = Tracker()
+# entry = Entry(
+#     tag='eqtl',
+#     description='prep eQTL',
+#     category='Analysis',
+#     module='eQTL'
+# )
 
 is_cloud = False
 set_cloud(cloud=is_cloud)
@@ -41,10 +41,10 @@ runner = wdlplayer(
     filedir=filedir,
     localdata=localdir,
     tmpdir=os.path.join(args.output_dir, ".caper_tmp"),
-    caper_backend_tag='slurm',
-    hostname='',
-    port=8200,
-    gcp_project=''
+    caper_backend_tag='slurm'
+    #hostname='user',
+    #port=8200
+    #gcp_project=
 )
 
 # ------------------------------------------------
