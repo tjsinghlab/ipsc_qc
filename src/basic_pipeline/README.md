@@ -105,14 +105,90 @@ Python packages included in the docker image:
 
 ## Directory Structure
 
+### Repo structure
+
+```
+basic_pipeline
+    │   ├── docker_image_structure
+    │   ├── docker-compose.yaml
+    │   ├── Dockerfile
+    │   ├── Dockerfile_slim
+    │   ├── modules
+    │   │   ├── cancer_mutation_calling
+    │   │   │   ├── cancer_mutation_mapping.R
+    │   │   │   └── filter_vcf_on_cosmic.sh
+    │   │   ├── eSNPKaryotyping
+    │   │   │   └── run_eSNPKaryotyping.R
+    │   │   ├── mycoplasma_detection
+    │   │   │   └── detect_mycoplasma.sh
+    │   │   ├── outlier_detection
+    │   │   │   └── outlier_detection.R
+    │   │   ├── PACNet
+    │   │   │   └── run_pacnet.R
+    │   │   └── preprocessing
+    │   │       └── wdlplay
+    │   │           ├── LICENSE.md
+    │   │           ├── Makefile
+    │   │           ├── MANIFEST.in
+    │   │           ├── notebook
+    │   │           │   └── sandbox.ipynb
+    │   │           ├── README.md
+    │   │           ├── requirements-dev.txt
+    │   │           ├── requirements.txt
+    │   │           ├── settings.json
+    │   │           ├── setup.cfg
+    │   │           ├── setup.py
+    │   │           ├── src
+    │   │           │   ├── extract_chr22
+    │   │           │   │   └── ExtractChromosome.wdl
+    │   │           │   ├── gcta
+    │   │           │   │   ├── greml-bivar.wdl
+    │   │           │   │   ├── greml.wdl
+    │   │           │   │   └── grm.wdl
+    │   │           │   └── sandbox
+    │   │           │       ├── copy_outputs.py
+    │   │           │       ├── copy_outputs.sh
+    │   │           │       ├── run_mysql_server.sh
+    │   │           │       └── sandbox.py
+    │   │           ├── versioneer.py
+    │   │           ├── warp-pipelines
+    │   │           │   ├── bulk_RNAseq_preprocess
+    │   │           │   │   ├── RNAseq_pipeline_fastq.wdl
+    │   │           │   │   ├── run_wdl.py
+    │   │           │   │   └── wdl
+    │   │           │   │       ├── fastqc.wdl
+    │   │           │   │       ├── markduplicates.wdl
+    │   │           │   │       ├── rnaseqc2.wdl
+    │   │           │   │       ├── rsem.wdl
+    │   │           │   │       └── star.wdl
+    │   │           │   └── GATK_variant_calling
+    │   │           │       ├── gatk4-rna-best-practices.wdl
+    │   │           │       ├── gatk4-rna-germline-calling_run.py
+    │   │           │       └── gatk4-rna-germline-variant-calling.inputs.json
+    │   │           └── wdlplay
+    │   │               ├── __init__.py
+    │   │               ├── _version.py
+    │   │               ├── db.json
+    │   │               └── wdlplayer.py
+    │   ├── pipeline_runner.sh
+    │   ├── README.md
+    │   ├── reference_check.sh
+    │   ├── report_builder.R
+    │   ├── run_qc_pipeline.sh
+    │   └── tarballs
+    │       └── CellNet_master.tar.gz
+    ├── s01.1_bulk_rna_preprocessing
+```
+
+### Inputs
+
 The pipeline expects separate **reference** and **input** directories:
 
 project/
-- ├── refs/ # Reference files (unchanging across runs; only need to provide cosmic ref file)
-- ├── inputs/ # Input files for a run (pipeline will loop over samples)
-- ├── outputs/ # Output directory
-- ├── modules/ # Contains all pipeline modules
-- └── pipeline_runner.sh
+- ├── ref_dir/ # Reference files (unchanging across runs; must download from cloud storage)
+- ├── fastq_dir/ # Input files for a run (pipeline will loop over samples)
+- ├── output_dir/ # Output directory
+- └── cosmic_dir/ # User must download and provide COSMIC database files
 
 ---
 
