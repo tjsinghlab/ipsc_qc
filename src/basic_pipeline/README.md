@@ -1,7 +1,7 @@
 # iPSC QC Pipeline
 
 This pipeline will screen bulk RNA sequencing data for several QC metrics, including cancer mutation calling (in select oncogenes), eSNPKaryotyping, mycoplasma detection, PACNet classification, and outlier assessment.
-This pipeline expects outputs from STAR alignment, RSEM, and GATK variant calling pipelines, in addition to fastq.gz files from sequencing run.
+This pipeline expects a directory of fastq.gz (paired end: R1 and R2) files from bulk RNA sequencing run.
 
 ---
 
@@ -22,7 +22,7 @@ This pipeline expects outputs from STAR alignment, RSEM, and GATK variant callin
 #### Must be provided by user
 - `Cosmic_CancerGeneCensus_Tsv_v101_GRCh37.tar`  
   *Cosmic Database; MUST BE DOWNLOADED BY USER AND PROVIDED IN COSMIC_DIR ARGUMENT. If not, cancer mutation calling will not be performed.*
-#### If not installed and provided by user, the following files will be automatically downloaded within the pipeline:
+#### Must be downloaded by user from *insert cloud link here*
 - `star_index_oh75`
   *reference files for STAR; included in docker image*
 - `rsem_reference`
@@ -200,13 +200,15 @@ File base names should be unique for each sample and consistent across file type
 
 ## Running the Pipeline
 
-Example command:
+Example command (replace all "my_***" directories with your actual directories)
 
-```bash
+```
 docker run -it --rm \
-    -v ./my_fastqs:/data \ #mount your data
-    ipsc_qc_image \
-    --fastq-dir /data \ #data is mounted; only need to specify /data
-    --cosmic_dir ./Cosmic_CancerGeneCensus_Tsv_v101_GRCh37.tar \
-    --output_dir /your/output/directory
+    -v ./my_fastqs:/data \
+    -v ./my_refs:/ref \
+    -v ./my_cosmic:/cosmic \
+    -v ./my_outputs:/output \
+    ipsc_qc_image
+```
+
 

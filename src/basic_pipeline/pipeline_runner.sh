@@ -5,8 +5,8 @@ set -euo pipefail
 # Configuration
 # ===========================================
 PROJECT="Project [$(date '+%a %b %d %Y %H:%M')]"
-REF_DIR=""  
-FASTQ_DIR=""
+REF_DIR="/ref" #mounted to image by user
+FASTQ_DIR="/data" #mounted to image by user
 OUTPUT_DIR=""
 COSMIC_DIR=""
 
@@ -18,7 +18,7 @@ PY_RUNNER2="/pipeline/modules/preprocessing/GATK_variant_calling/gatk4-rna-germl
 # Usage
 # ===========================================
 usage() {
-    echo "Usage: pipeline_runner.sh --fastq_dir PATH --output_dir PATH [--cosmic_dir PATH]"
+    echo "Usage: pipeline_runner.sh --fastq_dir PATH --output_dir PATH --ref_dir PATH [--cosmic_dir PATH] [--project NAME]"
     echo ""
     echo "Required arguments:"
     echo "  --fastq_dir PATH     Directory containing FASTQ files"
@@ -26,7 +26,7 @@ usage() {
     echo "  --ref_dir PATH       Directory containing reference files (genome, annotations, etc.)"
     echo ""
     echo "Optional arguments:"
-    echo "  --cosmic_dir PATH    Directory containing COSMIC references (if provided, runs mutation calling)"
+    echo "  --cosmic_dir PATH    Directory containing COSMIC references"
     echo "  --project NAME       Project name (default: ${PROJECT})"
     echo ""
     exit 1
@@ -51,8 +51,8 @@ done
 # ===========================================
 # Input check
 # ===========================================
-if [[ -z "$FASTQ_DIR" || -z "$OUTPUT_DIR" ]]; then
-    echo "[ERROR] --fastq_dir and --output_dir must be provided"
+if [[ -z "$FASTQ_DIR" || -z "$OUTPUT_DIR" || -z "$REF_DIR" ]]; then
+    echo "[ERROR] --fastq_dir, --output_dir, and --ref_dir must be provided"
     usage
 fi
 
