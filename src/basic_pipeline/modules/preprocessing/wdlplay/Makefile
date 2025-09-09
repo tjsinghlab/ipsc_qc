@@ -106,25 +106,25 @@ help-womtool:
 
 # caper
 
-CLOUD_PROJECT=daly-neale-sczmeta
-REGION=us-central1
-ZONE=us-central1-a
-VM=$(PROJECT_NAME)-cromwell
-KEY='~/.service_account_key/daly-neale-sczmeta-5c636e7cb4e5.json'
-PORTR=8000
+# CLOUD_PROJECT=daly-neale-sczmeta
+# REGION=us-central1
+# ZONE=us-central1-a
+# VM=$(PROJECT_NAME)-cromwell
+# KEY='~/.service_account_key/daly-neale-sczmeta-5c636e7cb4e5.json'
+# PORTR=8000
 
-istart:
-	bash create_instance.sh $(VM) $(CLOUD_PROJECT) $(KEY) gs://$(PROJECT_NAME)/data/wdl/ --gcp-region $(REGION) --zone $(ZONE) --gcp-loc-dir gs://$(PROJECT_NAME)/data/wdl/.caper_tmp/
+# istart:
+# 	bash create_instance.sh $(VM) $(CLOUD_PROJECT) $(KEY) gs://$(PROJECT_NAME)/data/wdl/ --gcp-region $(REGION) --zone $(ZONE) --gcp-loc-dir gs://$(PROJECT_NAME)/data/wdl/.caper_tmp/
 
-issh:
-	gcloud compute ssh $(VM) --zone $(ZONE) -- -L $(PORTR):localhost:$(PORTR)
+# issh:
+# 	gcloud compute ssh $(VM) --zone $(ZONE) -- -L $(PORTR):localhost:$(PORTR)
 
-idelete:
-	gcloud compute instances delete $(VM) --zone $(ZONE)
+# idelete:
+# 	gcloud compute instances delete $(VM) --zone $(ZONE)
 
-clean-wdl:
-	find . -name 'cromwell.out*' -exec rm -f {} +
-	find . -name 'hail-*.log' -exec rm -f {} +
+# clean-wdl:
+# 	find . -name 'cromwell.out*' -exec rm -f {} +
+# 	find . -name 'hail-*.log' -exec rm -f {} +
 
 # run:
 # 	caper run wdl/$(NAME)/$(NAME).wdl --inputs wdl/$(NAME)/$(NAME).json --local-out-dir data/$(NAME)/0.1 --local-loc-dir tmp/

@@ -21,8 +21,8 @@ This pipeline expects outputs from STAR alignment, RSEM, and GATK variant callin
 ### Reference Files (place in `ref/` directory; default is ./ref)
 #### Must be provided by user
 - `Cosmic_CancerGeneCensus_Tsv_v101_GRCh37.tar`  
-  *Cosmic Database; MUST BE DOWNLOADED BY USER AND INCLUDED IN REF_DIR ARGUMENT*
-#### Included in docker image
+  *Cosmic Database; MUST BE DOWNLOADED BY USER AND PROVIDED IN COSMIC_DIR ARGUMENT. If not, cancer mutation calling will not be performed.*
+#### If not installed and provided by user, the following files will be automatically downloaded within the pipeline:
 - `star_index_oh75`
   *reference files for STAR; included in docker image*
 - `rsem_reference`
@@ -203,9 +203,10 @@ File base names should be unique for each sample and consistent across file type
 Example command:
 
 ```bash
-bash ./run_pipeline.sh \
-    -f ./my_fastqs \
-    -o ./results \
-    -p "My_Project" \
-    -c ./Cosmic_CancerGeneCensus_Tsv_v101_GRCh37.tar
+docker run -it --rm \
+    -v ./my_fastqs:/data \ #mount your data
+    ipsc_qc_image \
+    --fastq-dir /data \ #data is mounted; only need to specify /data
+    --cosmic_dir ./Cosmic_CancerGeneCensus_Tsv_v101_GRCh37.tar \
+    --output_dir /your/output/directory
 

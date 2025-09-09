@@ -5,7 +5,7 @@ set -euo pipefail
 # Configuration
 # ===========================================
 PROJECT="Project [$(date '+%a %b %d %Y %H:%M')]"
-REF_DIR="/ref"   # fixed inside Docker image
+REF_DIR=""  
 FASTQ_DIR=""
 OUTPUT_DIR=""
 COSMIC_DIR=""
@@ -23,6 +23,7 @@ usage() {
     echo "Required arguments:"
     echo "  --fastq_dir PATH     Directory containing FASTQ files"
     echo "  --output_dir PATH    Output directory for pipeline results"
+    echo "  --ref_dir PATH       Directory containing reference files (genome, annotations, etc.)"
     echo ""
     echo "Optional arguments:"
     echo "  --cosmic_dir PATH    Directory containing COSMIC references (if provided, runs mutation calling)"
@@ -39,6 +40,7 @@ while [[ $# -gt 0 ]]; do
         --project)    PROJECT="$2"; shift ;;
         --fastq_dir)  FASTQ_DIR="$2"; shift ;;
         --output_dir) OUTPUT_DIR="$2"; shift ;;
+        --ref_dir)    REF_DIR="$2"; shift ;;
         --cosmic_dir) COSMIC_DIR="$2"; shift ;;
         -h|--help)    usage ;;
         *) echo "[ERROR] Unknown option: $1"; usage ;;
