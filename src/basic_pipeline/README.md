@@ -177,7 +177,6 @@ basic_pipeline
     │   ├── run_qc_pipeline.sh
     │   └── tarballs
     │       └── CellNet_master.tar.gz
-    ├── s01.1_bulk_rna_preprocessing
 ```
 
 ### Inputs
