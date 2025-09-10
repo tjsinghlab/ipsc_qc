@@ -105,7 +105,7 @@ Python packages included in the docker image:
 
 ## Directory Structure
 
-### Repo structure
+### Basic pipeline repo structure
 
 ```
 basic_pipeline
