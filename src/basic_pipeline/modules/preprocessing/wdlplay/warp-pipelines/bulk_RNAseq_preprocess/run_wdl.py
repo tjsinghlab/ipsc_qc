@@ -17,21 +17,17 @@ parser.add_argument("--output_dir", required=True, help="Output directory")
 parser.add_argument("--sample", required=True, help="Sample name (prefix)")
 args = parser.parse_args()
 
-os.makedirs(args.output_dir, exist_ok=True)
-
 # ------------------------------------------------
-# Metadata & tracking (kept from original)
+# Metadata & tracking
 # ------------------------------------------------
 os.environ['VERSION'] = '0.1.0'
-cloudir, localdir, filedir = init_directories(__file__)
 
-# tr = Tracker()
-# entry = Entry(
-#     tag='eqtl',
-#     description='prep eQTL',
-#     category='Analysis',
-#     module='eQTL'
-# )
+# Force logs into the output directory
+log_dir = os.path.join(args.output_dir, "logs", os.environ['VERSION'])
+os.makedirs(log_dir, exist_ok=True)
+os.environ['WDLPLAY_LOGDIR'] = log_dir
+
+cloudir, localdir, filedir = init_directories(__file__)
 
 is_cloud = False
 set_cloud(cloud=is_cloud)
@@ -46,6 +42,7 @@ runner = wdlplayer(
     #port=8200
     #gcp_project=
 )
+
 
 # ------------------------------------------------
 # Define workflow + inputs
