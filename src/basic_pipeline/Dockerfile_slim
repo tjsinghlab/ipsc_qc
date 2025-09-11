@@ -9,16 +9,32 @@ LABEL description="Slim Bulk RNA-seq pipeline image (no refs baked in)."
 # ----------------------
 # System dependencies
 # ----------------------
+# RUN apt-get update && \
+#     DEBIAN_FRONTEND=noninteractive apt-get install -y \
+#     wget curl unzip tar gzip bzip2 git \
+#     build-essential libcurl4-openssl-dev libssl-dev libxml2-dev \
+#     zlib1g-dev libbz2-dev liblzma-dev libpcre3-dev \
+#     bowtie2 samtools bcftools vcftools default-jdk python3 python3-pip && \
+#     apt-get clean && \
+#     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+# Install dependencies first
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y \
     wget curl unzip tar gzip bzip2 git \
-    build-essential libcurl4-openssl-dev libssl-dev libxml2-dev \
+    build-essential libseccomp-dev pkg-config \
+    squashfs-tools cryptsetup uidmap squashfuse fuse-overlayfs fuse2fs \
+    libfuse2 libcurl4-openssl-dev libssl-dev libxml2-dev \
     zlib1g-dev libbz2-dev liblzma-dev libpcre3-dev \
-    singularity bowtie2 samtools bcftools vcftools default-jdk python3 python3-pip && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+    bowtie2 samtools bcftools vcftools default-jdk python3 python3-pip \
+    && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-#RUN apt-get update && apt-get install -y squashfs-tools
+# Now install Apptainer
+RUN wget https://github.com/apptainer/apptainer/releases/download/v1.1.9/apptainer_1.1.9_amd64.deb && \
+    apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -f -y ./apptainer_1.1.9_amd64.deb && \
+    rm apptainer_1.1.9_amd64.deb && \
+    ln -s /usr/bin/apptainer /usr/bin/singularity || true
 
 # ----------------------
 # R packages
