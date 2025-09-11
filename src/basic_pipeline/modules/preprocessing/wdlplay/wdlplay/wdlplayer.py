@@ -59,6 +59,17 @@ class wdlplayer(object):
         localdata = self.localdata
         self.tmpdir = tmpdir if tmpdir is not None else os.path.join(
             self.outdir, '.caper_tmp')
+        
+        # Define version
+        self.version = 'debug' if 'VERSION' not in os.environ else os.environ['VERSION']
+        
+        logdir_env = os.environ.get("WDLPLAY_LOGDIR", None)
+        if logdir_env:
+            self.logdir = logdir_env
+        else:
+            self.logdir = os.path.join(self.outdir, "log", self.version)
+
+        os.makedirs(self.logdir, exist_ok=True)
             
         # Assigns config json path
         self.caper_backend_tag = caper_backend_tag
@@ -74,10 +85,9 @@ class wdlplayer(object):
         #---------------------------------------------------
         # Same as hailrunner
         # to keep syntax, change outdir
-        self.outdir = filedir
+        #self.outdir = filedir
 
-        # Define version
-        self.version = 'debug' if 'VERSION' not in os.environ else os.environ['VERSION']
+        
 
         # Define hostname and port
         self.hostname = hostname
