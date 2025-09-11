@@ -109,74 +109,56 @@ Python packages included in the docker image:
 
 ```
 basic_pipeline
-    │   ├── docker_image_structure
-    │   ├── docker-compose.yaml
-    │   ├── Dockerfile
-    │   ├── Dockerfile_slim
-    │   ├── modules
-    │   │   ├── cancer_mutation_calling
-    │   │   │   ├── cancer_mutation_mapping.R
-    │   │   │   └── filter_vcf_on_cosmic.sh
-    │   │   ├── eSNPKaryotyping
-    │   │   │   └── run_eSNPKaryotyping.R
-    │   │   ├── mycoplasma_detection
-    │   │   │   └── detect_mycoplasma.sh
-    │   │   ├── outlier_detection
-    │   │   │   └── outlier_detection.R
-    │   │   ├── PACNet
-    │   │   │   └── run_pacnet.R
-    │   │   └── preprocessing
-    │   │       └── wdlplay
-    │   │           ├── LICENSE.md
-    │   │           ├── Makefile
-    │   │           ├── MANIFEST.in
-    │   │           ├── notebook
-    │   │           │   └── sandbox.ipynb
-    │   │           ├── README.md
-    │   │           ├── requirements-dev.txt
-    │   │           ├── requirements.txt
-    │   │           ├── settings.json
-    │   │           ├── setup.cfg
-    │   │           ├── setup.py
-    │   │           ├── src
-    │   │           │   ├── extract_chr22
-    │   │           │   │   └── ExtractChromosome.wdl
-    │   │           │   ├── gcta
-    │   │           │   │   ├── greml-bivar.wdl
-    │   │           │   │   ├── greml.wdl
-    │   │           │   │   └── grm.wdl
-    │   │           │   └── sandbox
-    │   │           │       ├── copy_outputs.py
-    │   │           │       ├── copy_outputs.sh
-    │   │           │       ├── run_mysql_server.sh
-    │   │           │       └── sandbox.py
-    │   │           ├── versioneer.py
-    │   │           ├── warp-pipelines
-    │   │           │   ├── bulk_RNAseq_preprocess
-    │   │           │   │   ├── RNAseq_pipeline_fastq.wdl
-    │   │           │   │   ├── run_wdl.py
-    │   │           │   │   └── wdl
-    │   │           │   │       ├── fastqc.wdl
-    │   │           │   │       ├── markduplicates.wdl
-    │   │           │   │       ├── rnaseqc2.wdl
-    │   │           │   │       ├── rsem.wdl
-    │   │           │   │       └── star.wdl
-    │   │           │   └── GATK_variant_calling
-    │   │           │       ├── gatk4-rna-best-practices.wdl
-    │   │           │       ├── gatk4-rna-germline-calling_run.py
-    │   │           │       └── gatk4-rna-germline-variant-calling.inputs.json
-    │   │           └── wdlplay
-    │   │               ├── __init__.py
-    │   │               ├── _version.py
-    │   │               ├── db.json
-    │   │               └── wdlplayer.py
-    │   ├── pipeline_runner.sh
-    │   ├── README.md
-    │   ├── reference_check.sh
-    │   ├── report_builder.R
-    │   ├── run_qc_pipeline.sh
-    │   └── tarballs
-    │       └── CellNet_master.tar.gz
+       ├── docker_image_structure
+       ├── docker-compose.yaml
+       ├── Dockerfile_slim
+       ├── modules
+       │   ├── cancer_mutation_calling
+       │   │   ├── cancer_mutation_mapping.R
+       │   │   └── filter_vcf_on_cosmic.sh
+       │   ├── eSNPKaryotyping
+       │   │   └── run_eSNPKaryotyping.R
+       │   ├── mycoplasma_detection
+       │   │   └── detect_mycoplasma.sh
+       │   ├── outlier_detection
+       │   │   └── outlier_detection.R
+       │   ├── PACNet
+       │   │   └── run_pacnet.R
+       │   └── preprocessing
+       │       └── wdlplay
+       │           ├── LICENSE.md
+       │           ├── Makefile
+       │           ├── MANIFEST.in
+       │           ├── README.md
+       │           ├── requirements.txt
+       │           ├── settings.json
+       │           ├── setup.cfg
+       │           ├── setup.py
+       │           ├── versioneer.py
+       │           ├── warp-pipelines
+       │           │   ├── bulk_RNAseq_preprocess
+       │           │   │   ├── RNAseq_pipeline_fastq.wdl
+       │           │   │   ├── run_wdl.py
+       │           │   │   └── wdl
+       │           │   │       ├── fastqc.wdl
+       │           │   │       ├── markduplicates.wdl
+       │           │   │       ├── rnaseqc2.wdl
+       │           │   │       ├── rsem.wdl
+       │           │   │       └── star.wdl
+       │           │   └── GATK_variant_calling
+       │           │       ├── gatk4-rna-best-practices.wdl
+       │           │       ├── gatk4-rna-germline-calling_run.py
+       │           │       └── gatk4-rna-germline-variant-calling.inputs.json
+       │           └── wdlplay
+       │               ├── __init__.py
+       │               ├── _version.py
+       │               ├── db.json
+       │               └── wdlplayer.py
+       ├── pipeline_runner.sh
+       ├── README.md
+       ├── report_builder.R
+       └── tarballs
+           └── CellNet_master.tar.gz
 ```
 
 ### Inputs
@@ -210,11 +192,12 @@ File base names should be unique for each sample and consistent across file type
 
 ### Required Directories
 
-| Argument         | Description                                                                 | Default                        | Required |
-|-----------------|-----------------------------------------------------------------------------|--------------------------------|----------|
-| `--ref_dir`      | Directory containing reference files                                        | `/refs`                        | Yes      |
-| `--fastq_dir`   | Directory containing input files (fastq.gz sequencing files) for a run                                  | `./fastq`                     | Yes      |
+| Argument         | Description                                                                | Default                        | Required |
+|------------------|----------------------------------------------------------------------------|--------------------------------|----------|
+| `--ref_dir`      | Directory containing reference files                                       | `/refs`                        | Yes      |
+| `--fastq_dir`    | Directory containing input files (fastq.gz sequencing files) for a run     | `./fastq`                      | Yes      |
 | `--output_dir`   | Output directory                                                           | `./outputs`                    | No       |
+| `--cosmic_dir`   | Directory containing downloaded COSMIC database files.                     | `cosmic`                       | No       |
 | `--project`      | Project name                                                               | `default_project`              | No       |
 
 ### Module-specific inputs
