@@ -14,9 +14,11 @@ RUN apt-get update && \
     wget curl unzip tar gzip bzip2 git \
     build-essential libcurl4-openssl-dev libssl-dev libxml2-dev \
     zlib1g-dev libbz2-dev liblzma-dev libpcre3-dev \
-    bowtie2 samtools bcftools vcftools default-jdk python3 python3-pip && \
+    singularity bowtie2 samtools bcftools vcftools default-jdk python3 python3-pip && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+#RUN apt-get update && apt-get install -y squashfs-tools
 
 # ----------------------
 # R packages
