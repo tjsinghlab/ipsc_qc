@@ -176,23 +176,40 @@ for sample in "${SAMPLES[@]}"; do
 
     # Add step that skips each chunk if the outputs already exist
     # Here, if bam_file and bai_file and rsem_file exist, skip to next sample
-
     echo "[STEP] Running bulk RNAseq pre-processing for $sample..."
-    ( python3 "$PY_RUNNER1" \--fastq1 "$fq1" --fastq2 "$fq2" --output_dir "$sample_outdir" --sample "$sample" > "$LOG_DIR/${sample}_bulk_preprocess.log" 2>&1 )
-    bam_file="$sample_outdir/star_out/${sample}..Aligned.sortedByCoord.out.bam"
+
+    bam_file="$sample_outdir/star_out/${sample}.Aligned.sortedByCoord.out.bam"
     bai_file="${bam_file}.bai"
     rsem_file="$sample_outdir/RSEM_outputs/${sample}.rsem.genes.results.gz"
+
+    # Only run if all outputs are missing
+    if [ -f "$bam_file" ] && [ -f "$bai_file" ] && [ -f "$rsem_file" ]; then
+        echo "[SKIP] All outputs for $sample already exist."
+    else
+        echo "[RUN] Outputs missing for $sample, running pipeline..."
+        (
+            python3 "$PY_RUNNER1" \
+                --fastq1 "$fq1" \
+                --fastq2 "$fq2" \
+                --output_dir "$sample_outdir" \
+                --sample "$sample" \
+                > "$LOG_DIR/${sample}_bulk_preprocess.log" 2>&1
+        )
+    fi
 
     # ------------------------------------------------
     # STEP 2: Variant Calling
     # ------------------------------------------------
     echo "[STEP] Calling germline variants for $sample..."
-    ( python3 "$PY_RUNNER2" --bam "$bam_file" --bai "$bai_file" --outdir "$sample_outdir" --sample "$sample" > "$LOG_DIR/${sample}_wdl2.log" 2>&1 )
+
     vcf_file="$sample_outdir/${sample}.vcf"
-    
-    if [[ ! -f "$vcf_file" ]]; then
-        echo "[ERROR] VCF file not found for $sample. Skipping..."
-        continue
+    if [ -f "$vcf_file" ]; then
+        echo "[SKIP] VCF file for $sample already exists."
+    else
+        echo "[RUN] VCF file missing for $sample, running variant calling..."
+        (
+            python3 "$PY_RUNNER2" --bam "$bam_file" --bai "$bai_file" --outdir "$sample_outdir" --sample "$sample" > "$LOG_DIR/${sample}_wdl2.log" 2>&1
+        )
     fi
 
     # ------------------------------------------------
