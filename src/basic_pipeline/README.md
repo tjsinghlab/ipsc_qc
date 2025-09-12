@@ -80,29 +80,29 @@ Ensure these tools are installed or available via a module system (ex. HPC users
 R and Python packages will be included as part of the docker image.
 
 R packages included in the docker image:
-- devtools
-- eSNPKaryotyping
-- zoo
-- gplots
-- patchwork
-- ggplot2
-- optparse
-- dplyr
-- data.table
-- tidyr
-- fuzzyjoin
-- stringr
-- biomaRt
-- purrr
-- CellNet (tarball included in docker image)
-- cancerCellNet
-- jsonlite
-- edgeR
+- `devtools`
+- `eSNPKaryotyping`
+- `zoo`
+- `gplots`
+- `patchwork`
+- `ggplot2`
+- `optparse`
+- `dplyr`
+- `data.table`
+- `tidyr`
+- `fuzzyjoin`
+- `stringr`
+- `biomaRt`
+- `purrr`
+- `CellNet` (tarball included in docker image)
+- `cancerCellNet`
+- `jsonlite`
+- `edgeR`
 
 Python packages included in the docker image:
-- os
-- json
-- logzero (logger)
+- `os`
+- `json`
+- `logzero` (logger)
 
 ---
 
