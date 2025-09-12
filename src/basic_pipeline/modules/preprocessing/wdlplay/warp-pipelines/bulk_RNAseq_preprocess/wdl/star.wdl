@@ -114,16 +114,16 @@ task star {
     }
 
     output {
-        File bam_file = "${outdir}star_out/${prefix}.Aligned.sortedByCoord.out.bam"
-        File bam_index = "${outdir}star_out/${prefix}.Aligned.sortedByCoord.out.bam.bai"
-        File transcriptome_bam = "${outdir}star_out/${prefix}.Aligned.toTranscriptome.out.bam"
-        File chimeric_junctions = "${outdir}star_out/${prefix}.Chimeric.out.junction.gz"
-        File chimeric_bam_file = "${outdir}star_out/${prefix}.Chimeric.out.sorted.bam"
-        File chimeric_bam_index = "${outdir}star_out/${prefix}.Chimeric.out.sorted.bam.bai"
-        File read_counts = "${outdir}star_out/${prefix}.ReadsPerGene.out.tab.gz"
-        File junctions = "${outdir}star_out/${prefix}.SJ.out.tab.gz"
-        File junctions_pass1 = "${outdir}star_out/${prefix}._STARpass1/${prefix}.SJ.pass1.out.tab.gz"
-        Array[File] logs = ["${outdir}star_out/${prefix}.Log.final.out", "${outdir}star_out/${prefix}.Log.out", "${outdir}star_out/${prefix}.Log.progress.out"]
+        File bam_file = "${outdir}/star_out/${prefix}.Aligned.sortedByCoord.out.bam"
+        File bam_index = "${outdir}/star_out/${prefix}.Aligned.sortedByCoord.out.bam.bai"
+        File transcriptome_bam = "${outdir}/star_out/${prefix}.Aligned.toTranscriptome.out.bam"
+        File chimeric_junctions = "${outdir}/star_out/${prefix}.Chimeric.out.junction.gz"
+        File chimeric_bam_file = "${outdir}/star_out/${prefix}.Chimeric.out.sorted.bam"
+        File chimeric_bam_index = "${outdir}/star_out/${prefix}.Chimeric.out.sorted.bam.bai"
+        File read_counts = "${outdir}/star_out/${prefix}.ReadsPerGene.out.tab.gz"
+        File junctions = "${outdir}/star_out/${prefix}.SJ.out.tab.gz"
+        File junctions_pass1 = "${outdir}/star_out/${prefix}._STARpass1/${prefix}.SJ.pass1.out.tab.gz"
+        Array[File] logs = ["${outdir}/star_out/${prefix}.Log.final.out", "${outdir}/star_out/${prefix}.Log.out", "${outdir}/star_out/${prefix}.Log.progress.out"]
     }
 
     runtime {

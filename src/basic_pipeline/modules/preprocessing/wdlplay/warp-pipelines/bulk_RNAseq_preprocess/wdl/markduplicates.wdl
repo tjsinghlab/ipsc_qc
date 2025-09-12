@@ -30,9 +30,9 @@ task markduplicates {
     }
 
     output {
-        File bam_file = "${outdir}Mark_duplicates_outputs/${output_bam}"
-        File bam_index = "${outdir}Mark_duplicates_outputs/${output_bam}.bai"
-        File metrics = "${outdir}Mark_duplicates_outputs/${prefix}.marked_dup_metrics.txt"
+        File bam_file = "${outdir}/Mark_duplicates_outputs/${output_bam}"
+        File bam_index = "${outdir}/Mark_duplicates_outputs/${output_bam}.bai"
+        File metrics = "${outdir}/Mark_duplicates_outputs/${prefix}.marked_dup_metrics.txt"
     }
 
     runtime {

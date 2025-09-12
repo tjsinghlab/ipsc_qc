@@ -33,12 +33,12 @@ task rnaseqc2 {
     }
 
     output {
-        File gene_tpm = "${outdir}QC_outputs/${sample_id}.gene_tpm.gct.gz"
-        File gene_counts = "${outdir}QC_outputs/${sample_id}.gene_reads.gct.gz"
-        File exon_counts = "${outdir}QC_outputs/${sample_id}.exon_reads.gct.gz"
-        File metrics = "${outdir}QC_outputs/${sample_id}.metrics.tsv"
-        File gc_content = "${outdir}QC_outputs/${sample_id}.gc_content.tsv"
-        File insertsize_distr = "${outdir}QC_outputs/${sample_id}.fragmentSizes.txt"
+        File gene_tpm = "${outdir}/QC_outputs/${sample_id}.gene_tpm.gct.gz"
+        File gene_counts = "${outdir}/QC_outputs/${sample_id}.gene_reads.gct.gz"
+        File exon_counts = "${outdir}/QC_outputs/${sample_id}.exon_reads.gct.gz"
+        File metrics = "${outdir}/QC_outputs/${sample_id}.metrics.tsv"
+        File gc_content = "${outdir}/QC_outputs/${sample_id}.gc_content.tsv"
+        File insertsize_distr = "${outdir}/QC_outputs/${sample_id}.fragmentSizes.txt"
     }
 
     runtime {

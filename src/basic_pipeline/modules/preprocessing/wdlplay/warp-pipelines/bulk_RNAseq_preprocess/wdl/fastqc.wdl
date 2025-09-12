@@ -28,12 +28,12 @@ task fastqc {
     }
 
     output {
-        File fastq1_fastqc_html = "${outdir}fastqc_out/${fastq1_name}_fastqc.html"
-        File fastq1_fastqc_zip =  "${outdir}fastqc_out/${fastq1_name}_fastqc.zip"
-        File fastq1_fastqc_data = "${outdir}fastqc_out/${fastq1_name}.fastqc_data.txt.gz"
-        File fastq2_fastqc_html = "${outdir}fastqc_out/${fastq2_name}_fastqc.html"
-        File fastq2_fastqc_zip =  "${outdir}fastqc_out/${fastq2_name}_fastqc.zip"
-        File fastq2_fastqc_data = "${outdir}fastqc_out/${fastq2_name}.fastqc_data.txt.gz"
+        File fastq1_fastqc_html = "${outdir}/fastqc_out/${fastq1_name}_fastqc.html"
+        File fastq1_fastqc_zip =  "${outdir}/fastqc_out/${fastq1_name}_fastqc.zip"
+        File fastq1_fastqc_data = "${outdir}/fastqc_out/${fastq1_name}.fastqc_data.txt.gz"
+        File fastq2_fastqc_html = "${outdir}/fastqc_out/${fastq2_name}_fastqc.html"
+        File fastq2_fastqc_zip =  "${outdir}/fastqc_out/${fastq2_name}_fastqc.zip"
+        File fastq2_fastqc_data = "${outdir}/fastqc_out/${fastq2_name}.fastqc_data.txt.gz"
     }
 
     runtime {

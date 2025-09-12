@@ -38,8 +38,8 @@ task rsem {
     }
 
     output {
-        File genes="${outdir}RSEM_outputs/${prefix}.rsem.genes.results.gz"
-        File isoforms="${outdir}RSEM_outputs/${prefix}.rsem.isoforms.results.gz"
+        File genes="${outdir}/RSEM_outputs/${prefix}.rsem.genes.results.gz"
+        File isoforms="${outdir}/RSEM_outputs/${prefix}.rsem.isoforms.results.gz"
     }
 
     runtime {

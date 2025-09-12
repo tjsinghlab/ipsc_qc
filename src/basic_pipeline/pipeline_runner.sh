@@ -173,9 +173,13 @@ for sample in "${SAMPLES[@]}"; do
     # ------------------------------------------------
     # STEP 1: Preprocessing
     # ------------------------------------------------
+
+    # Add step that skips each chunk if the outputs already exist
+    # Here, if bam_file and bai_file and rsem_file exist, skip to next sample
+
     echo "[STEP] Running bulk RNAseq pre-processing for $sample..."
     ( python3 "$PY_RUNNER1" \--fastq1 "$fq1" --fastq2 "$fq2" --output_dir "$sample_outdir" --sample "$sample" > "$LOG_DIR/${sample}_bulk_preprocess.log" 2>&1 )
-    bam_file="$sample_outdir/${sample}.bam"
+    bam_file="$sample_outdir/star_out/${sample}..Aligned.sortedByCoord.out.bam"
     bai_file="${bam_file}.bai"
     rsem_file="$sample_outdir/RSEM_outputs/${sample}.rsem.genes.results.gz"
 
