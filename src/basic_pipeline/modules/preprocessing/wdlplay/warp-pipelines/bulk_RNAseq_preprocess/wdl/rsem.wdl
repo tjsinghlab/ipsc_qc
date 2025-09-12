@@ -25,16 +25,16 @@ task rsem {
         # mkdir rsem_reference
         # tar -xvvf ${rsem_reference} -C rsem_reference --strip-components=1
 
-        mkdir -p ${outdir + "RSEM_outputs"}
+        mkdir -p ${outdir + "/RSEM_outputs"}
         /src/run_RSEM.py \
             ${"--max_frag_len " + max_frag_len} \
             ${"--estimate_rspd " + estimate_rspd} \
             ${"--is_stranded " + is_stranded} \
             ${"--paired_end " + paired_end} \
             --threads ${num_threads} \
-            -o ${outdir + "RSEM_outputs"} \
+            -o ${outdir + "/RSEM_outputs"} \
             ${rsem_reference} ${transcriptome_bam} ${prefix}
-        gzip ${outdir + "RSEM_outputs"}/*.results
+        gzip ${outdir + "/RSEM_outputs"}/*.results
     }
 
     output {

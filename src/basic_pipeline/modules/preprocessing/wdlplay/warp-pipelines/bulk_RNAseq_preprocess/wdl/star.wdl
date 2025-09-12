@@ -74,16 +74,16 @@ task star {
         # mkdir star_index
         # tar -xvvf ${star_index} -C star_index --strip-components=1
 
-        mkdir -p ${outdir + "star_out"}
+        mkdir -p ${outdir + "/star_out"}
         # placeholders for optional outputs
-        touch ${outdir + "star_out"}/${prefix}.Aligned.toTranscriptome.out.bam
-        touch ${outdir + "star_out"}/${prefix}.Chimeric.out.sorted.bam
-        touch ${outdir + "star_out"}/${prefix}.Chimeric.out.sorted.bam.bai
-        touch ${outdir + "star_out"}/${prefix}.ReadsPerGene.out.tab  # run_STAR.py will gzip
+        touch ${outdir + "/star_out"}/${prefix}.Aligned.toTranscriptome.out.bam
+        touch ${outdir + "/star_out"}/${prefix}.Chimeric.out.sorted.bam
+        touch ${outdir + "/star_out"}/${prefix}.Chimeric.out.sorted.bam.bai
+        touch ${outdir + "/star_out"}/${prefix}.ReadsPerGene.out.tab  # run_STAR.py will gzip
 
         /src/run_STAR.py \
             ${star_index} $fastq1_abs $fastq2_abs ${prefix} \
-            --output_dir ${outdir + "star_out"} \
+            --output_dir ${outdir + "/star_out"} \
             ${"--outFilterMultimapNmax " + outFilterMultimapNmax} \
             ${"--alignSJoverhangMin " + alignSJoverhangMin} \
             ${"--alignSJDBoverhangMin " + alignSJDBoverhangMin} \

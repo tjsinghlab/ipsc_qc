@@ -19,12 +19,12 @@ task fastqc {
 
     command {
         set -euo pipefail
-        mkdir -p ${outdir + "fastqc_out"}
+        mkdir -p ${outdir + "/fastqc_out"}
         fastqc ${fastq1} ${fastq2} \
             --threads ${num_threads} \
-            --outdir ${outdir + "fastqc_out"}
-        unzip -p ${outdir + "fastqc_out"}/${fastq1_name}_fastqc.zip ${fastq1_name}_fastqc/fastqc_data.txt | gzip > ${outdir + "fastqc_out"}/${fastq1_name}.fastqc_data.txt.gz
-        unzip -p ${outdir + "fastqc_out"}/${fastq2_name}_fastqc.zip ${fastq2_name}_fastqc/fastqc_data.txt | gzip > ${outdir + "fastqc_out"}/${fastq2_name}.fastqc_data.txt.gz
+            --outdir ${outdir + "/fastqc_out"}
+        unzip -p ${outdir + "/fastqc_out"}/${fastq1_name}_fastqc.zip ${fastq1_name}_fastqc/fastqc_data.txt | gzip > ${outdir + "/fastqc_out"}/${fastq1_name}.fastqc_data.txt.gz
+        unzip -p ${outdir + "/fastqc_out"}/${fastq2_name}_fastqc.zip ${fastq2_name}_fastqc/fastqc_data.txt | gzip > ${outdir + "/fastqc_out"}/${fastq2_name}.fastqc_data.txt.gz
     }
 
     output {

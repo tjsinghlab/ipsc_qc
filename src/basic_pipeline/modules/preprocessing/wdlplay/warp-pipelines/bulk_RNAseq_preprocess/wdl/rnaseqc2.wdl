@@ -23,12 +23,12 @@ task rnaseqc2 {
     command {
         set -euo pipefail
         echo $(date +"[%b %d %H:%M:%S] Running RNA-SeQC 2")
-        mkdir -p ${outdir + "QC_outputs"}
-        touch ${outdir + "QC_outputs"}/${sample_id}.fragmentSizes.txt
-        touch ${outdir + "QC_outputs"}/${sample_id}.gc_content.tsv
-        rnaseqc ${genes_gtf} ${bam_file} ${outdir + "QC_outputs"} -s ${sample_id} ${"--bed " + intervals_bed} ${"--stranded " + strandedness} ${"--fasta " + reference_fasta} -vv ${flags} 
+        mkdir -p ${outdir + "/QC_outputs"}
+        touch ${outdir + "/QC_outputs"}/${sample_id}.fragmentSizes.txt
+        touch ${outdir + "/QC_outputs"}/${sample_id}.gc_content.tsv
+        rnaseqc ${genes_gtf} ${bam_file} ${outdir + "/QC_outputs"} -s ${sample_id} ${"--bed " + intervals_bed} ${"--stranded " + strandedness} ${"--fasta " + reference_fasta} -vv ${flags} 
         echo "  * compressing outputs"
-        gzip ${outdir + "QC_outputs"}/*.gct
+        gzip ${outdir + "/QC_outputs"}/*.gct
         echo $(date +"[%b %d %H:%M:%S] done")
     }
 
