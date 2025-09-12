@@ -8,7 +8,7 @@ from logzero import logger
 
 import wdlplay
 from findhere import here, init_directories, set_cloud, reldir, relpath
-
+import argparse
 from datatracker import *
 from wdlplay.wdlplayer import wdlplayer
 
