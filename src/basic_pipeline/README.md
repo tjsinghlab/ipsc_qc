@@ -18,10 +18,11 @@ This pipeline expects a directory of fastq.gz (paired end: R1 and R2) files from
 ---
 
 ## Requirements
-### Reference Files (place in `ref/` directory; default is ./ref)
+### Reference COSMIC Database Files (provide in --cosmic_dir argument; default is ./cosmic)
 #### Must be provided by user
 - `Cosmic_CancerGeneCensus_Tsv_v101_GRCh37.tar`  
   *Cosmic Database; MUST BE DOWNLOADED BY USER AND PROVIDED IN COSMIC_DIR ARGUMENT. If not, cancer mutation calling will not be performed.*
+### Reference Files (place in `ref/` directory; default is ./ref)
 #### Must be downloaded by user from *insert cloud link here*
 - `star_index_oh75`
   *reference files for STAR; included in docker image*
@@ -65,16 +66,18 @@ This pipeline expects a directory of fastq.gz (paired end: R1 and R2) files from
   *NCBI reference genome FASTA file; included in docker image, but can also be downloaded from `ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/001/405/GCF_000001405.26_GRCh38.p13`*
 
 ### Tools
-
 The pipeline depends on the following command line tools:
 
 - `bowtie2`
 - `samtools`
 - `bcftools`
 - `vcftools`
+- `singularity`
+- `parallel`
+- `squashfuse`
 
 Ensure these tools are installed or available via a module system (ex. HPC users). For AWS CLI, make sure v2 is installed.
-R packages will be included as part of the docker image.
+R and Python packages will be included as part of the docker image.
 
 R packages included in the docker image:
 - devtools
@@ -165,8 +168,8 @@ basic_pipeline
 
 The pipeline expects separate **reference** and **input** directories:
 
-project/
-- ├── ref_dir/ # Reference files (unchanging across runs; must download from cloud storage)
+inputs/
+- ├── ref_dir/ # Reference files (unchanging across runs; refs not present in this directory will automatically be downloaded)
 - ├── fastq_dir/ # Input files for a run (pipeline will loop over samples)
 - ├── output_dir/ # Output directory
 - └── cosmic_dir/ # User must download and provide COSMIC database files
@@ -180,6 +183,8 @@ project/
   *FASTQ files from sequencing run (bulk RNAseq)*
 - `--output_dir`  
   *Path to desired output directory (created if it doesn't exist; default: `./outputs`)*
+- `--ref_dir`
+  *Path to directory where reference files will live. Absent ref files will be downloaded within the pipeline.*
 
 ### Additional Arguments
 - `--project`  
@@ -194,7 +199,7 @@ File base names should be unique for each sample and consistent across file type
 
 | Argument         | Description                                                                | Default                        | Required |
 |------------------|----------------------------------------------------------------------------|--------------------------------|----------|
-| `--ref_dir`      | Directory containing reference files                                       | `/refs`                        | Yes      |
+| `--ref_dir`      | Directory for reference files                                       | `/refs`                        | Yes      |
 | `--fastq_dir`    | Directory containing input files (fastq.gz sequencing files) for a run     | `./fastq`                      | Yes      |
 | `--output_dir`   | Output directory                                                           | `./outputs`                    | No       |
 | `--cosmic_dir`   | Directory containing downloaded COSMIC database files.                     | `cosmic`                       | No       |
@@ -261,12 +266,21 @@ File base names should be unique for each sample and consistent across file type
 Example command (replace all "my_***" directories with your actual directories)
 
 ```
-docker run -it --rm \
-    -v ./my_fastqs:/data \
-    -v ./my_refs:/ref \
-    -v ./my_cosmic:/cosmic \
-    -v ./my_outputs:/output \
-    ipsc_qc_image
+#Download docker image as singularity image (for HPC compatibility):
+singularity pull ipsc_image_slim_withmake.sif docker://kjakubiak16/ipsc_image_slim_withmake:latest
+
+#Run the singularity command. First bind the directories, then supply bound directories as arguments.
+singularity exec \
+  -B ./test_fastqs:/data \
+  -B ./ref:/ref \
+  -B ./COSMIC_DB:/cosmic \
+  -B ./my_outputs:/output \
+  ipsc_image_slim_withmake.sif \
+  /pipeline/pipeline_runner.sh \
+  --fastq_dir /data \
+  --output_dir /output \
+  --ref_dir /ref \
+  --cosmic_dir /cosmic
 ```
 
 
