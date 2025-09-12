@@ -65,94 +65,78 @@ mkdir -p "$LOG_DIR"
 # ------------------------------------------------
 echo "[STEP] Resolving reference files..."
 
-# Helper: check for a file/dir in REF_DIR or /ref
 resolve_ref() {
-    local name="$1"
-    local path_rel="$2"
-    local fallback="$3"  # optional: if not found in either, use fallback (download/build/etc.)
-
-    if [[ -e "$REF_DIR/$path_rel" ]]; then
-        echo "[INFO] Found $name in user-provided REF_DIR."
-        echo "$REF_DIR/$path_rel"
-    elif [[ -e "/ref/$path_rel" ]]; then
-        echo "[INFO] Using $name from Docker image."
-        echo "/ref/$path_rel"
+    local name=$1 path=$2 cmd=$3
+    local f="$REF_DIR/$path"
+    if [ -s "$f" ]; then
+        echo "[INFO] Found $name at $f"
     else
-        if [[ -n "$fallback" ]]; then
-            echo "[WARN] $name not found. Running fallback step..."
-            eval "$fallback"
-            echo "$REF_DIR/$path_rel"
-        else
-            echo "[ERROR] Missing required reference: $name ($path_rel)"
-            exit 1
-        fi
+        echo "[WARN] Missing $name, fetching..."
+        eval "$cmd"
+        [ -s "$f" ] || { echo "[ERROR] Failed to fetch $name"; exit 1; }
     fi
+    echo "$f"
 }
 
-# STAR index (special case: build if missing)
+# ----------------------
+# Define resources
+# ----------------------
+resources=(
+  "GENES_GTF|gencode.v39.GRCh38.genes.collapsed_only.gtf|wget -O $REF_DIR/gencode.v39.GRCh38.genes.collapsed_only.gtf https://storage.googleapis.com/gtex-resources/GENCODE/gencode.v39.GRCh38.genes.collapsed_only.gtf"
+  "ANNOTATION_GTF|gencode.v39.GRCh38.annotation.gtf|wget -O $REF_DIR/gencode.v39.GRCh38.annotation.gtf https://storage.googleapis.com/gtex-resources/GENCODE/gencode.v39.GRCh38.annotation.gtf"
+
+  "REF_FASTA|Homo_sapiens_assembly38_noALT_noHLA_noDecoy.fasta|wget -O $REF_DIR/Homo_sapiens_assembly38_noALT_noHLA_noDecoy.fasta https://storage.googleapis.com/gtex-resources/references/Homo_sapiens_assembly38_noALT_noHLA_noDecoy.fasta"
+  "REF_FASTA_FAI|Homo_sapiens_assembly38_noALT_noHLA_noDecoy.fasta.fai|wget -O $REF_DIR/Homo_sapiens_assembly38_noALT_noHLA_noDecoy.fasta.fai https://storage.googleapis.com/gtex-resources/references/Homo_sapiens_assembly38_noALT_noHLA_noDecoy.fasta.fai"
+  "REF_DICT|Homo_sapiens_assembly38_noALT_noHLA_noDecoy.dict|wget -O $REF_DIR/Homo_sapiens_assembly38_noALT_noHLA_noDecoy.dict https://storage.googleapis.com/gtex-resources/references/Homo_sapiens_assembly38_noALT_noHLA_noDecoy.dict"
+
+  "DBSNP_VCF|Homo_sapiens_assembly38.dbsnp138.vcf|wget -O $REF_DIR/Homo_sapiens_assembly38.dbsnp138.vcf https://storage.googleapis.com/genomics-public-data/resources/broad/hg38/v0/Homo_sapiens_assembly38.dbsnp138.vcf"
+  "DBSNP_IDX|Homo_sapiens_assembly38.dbsnp138.vcf.idx|wget -O $REF_DIR/Homo_sapiens_assembly38.dbsnp138.vcf.idx https://storage.googleapis.com/genomics-public-data/resources/broad/hg38/v0/Homo_sapiens_assembly38.dbsnp138.vcf.idx"
+
+  "KNOWN_VCF1|Mills_and_1000G_gold_standard.indels.hg38.vcf.gz|wget -O $REF_DIR/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz https://storage.googleapis.com/genomics-public-data/resources/broad/hg38/v0/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz"
+  "KNOWN_VCF2|Homo_sapiens_assembly38.known_indels.vcf.gz|wget -O $REF_DIR/Homo_sapiens_assembly38.known_indels.vcf.gz https://storage.googleapis.com/genomics-public-data/resources/broad/hg38/v0/Homo_sapiens_assembly38.known_indels.vcf.gz"
+  "KNOWN_VCF1_IDX|Mills_and_1000G_gold_standard.indels.hg38.vcf.gz.tbi|wget -O $REF_DIR/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz.tbi https://storage.googleapis.com/genomics-public-data/resources/broad/hg38/v0/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz.tbi"
+  "KNOWN_VCF2_IDX|Homo_sapiens_assembly38.known_indels.vcf.gz.tbi|wget -O $REF_DIR/Homo_sapiens_assembly38.known_indels.vcf.gz.tbi https://storage.googleapis.com/genomics-public-data/resources/broad/hg38/v0/Homo_sapiens_assembly38.known_indels.vcf.gz.tbi"
+
+  "GATK_SIF|gatk_4.6.1.0.sif|singularity pull $REF_DIR/gatk_4.6.1.0.sif library://biocontainers/gatk4:4.6.1.0--py310hdfd78af_0"
+  "GTEX_SIF|gtex_rnaseq_v10.sif|singularity pull $REF_DIR/gtex_rnaseq_v10.sif docker://broadinstitute/gtex_rnaseq:V10"
+
+  "GENE_LIST|genes.txt|wget -O $REF_DIR/genes.txt https://raw.githubusercontent.com/tjsinghlab/ipsc_qc/main/src/basic_pipeline/ref_files/genes.txt"
+
+  "MYCO_REF|GCF_000027325.1_ASM2732v1_genomic.fna.gz|wget -O $REF_DIR/GCF_000027325.1_ASM2732v1_genomic.fna.gz https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/027/325/GCF_000027325.1_ASM2732v1/GCF_000027325.1_ASM2732v1_genomic.fna.gz"
+
+  "PACNET_EXP|Hs_expTrain_Jun-20-2017.rda|aws s3 cp s3://cellnet-rnaseq/ref/cnproc/HS/Hs_expTrain_Jun-20-2017.rda $REF_DIR/ --no-sign-request"
+  "PACNET_ST|Hs_stTrain_Jun-20-2017.rda|aws s3 cp s3://cellnet-rnaseq/ref/cnproc/HS/Hs_stTrain_Jun-20-2017.rda $REF_DIR/ --no-sign-request"
+
+  "NCBI_FASTA|GCF_000001405.26_GRCh38_genomic.fna|wget -O $REF_DIR/GCF_000001405.26_GRCh38_genomic.fna ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/001/405/GCF_000001405.26_GRCh38.p13"
+)
+
+# ----------------------
+# Resolve in one loop
+# ----------------------
+for res in "${resources[@]}"; do
+  IFS="|" read -r var file cmd <<< "$res"
+  declare "$var=$(resolve_ref "$var" "$file" "$cmd")"
+done
+
+# Special cases: STAR + RSEM need building
 STAR_INDEX=$(resolve_ref "STAR index" "star_index_oh75" \
-"mkdir -p \"$REF_DIR/star_index_oh75\" && \
-singularity exec /ref/images/gtex_rnaseq_v10.sif \
-    STAR --runMode genomeGenerate \
-         --genomeDir \"$REF_DIR/star_index_oh75\" \
-         --genomeFastaFiles \"$REF_DIR/Homo_sapiens_assembly38_noALT_noHLA_noDecoy.fasta\" \
-         --sjdbGTFfile \"$REF_DIR/gencode.v39.GRCh38.annotation.gtf\" \
-         --sjdbOverhang 75 \
-         --runThreadN 4")
+"mkdir -p $REF_DIR/star_index_oh75 && \
+ singularity exec $REF_DIR/gtex_rnaseq_v10.sif STAR --runMode genomeGenerate \
+   --genomeDir $REF_DIR/star_index_oh75 \
+   --genomeFastaFiles $REF_DIR/Homo_sapiens_assembly38_noALT_noHLA_noDecoy.fasta \
+   --sjdbGTFfile $REF_DIR/gencode.v39.GRCh38.annotation.gtf \
+   --sjdbOverhang 75 --runThreadN 4")
 
-# RSEM reference (special case: build if missing)
 RSEM_REF=$(resolve_ref "RSEM reference" "rsem_reference" \
-"mkdir -p \"$REF_DIR/rsem_reference\" && \
-singularity exec /ref/images/gtex_rnaseq_v10.sif \
-    rsem-prepare-reference \
-        \"$REF_DIR/Homo_sapiens_assembly38_noALT_noHLA_noDecoy.fasta\" \
-        \"$REF_DIR/rsem_reference/rsem_reference\" \
-        --gtf \"$REF_DIR/gencode.v39.GRCh38.annotation.gtf\" \
-        --num-threads 4")
-
-# GTF annotation
-GENES_GTF=$(resolve_ref "GTF annotation" "gencode.v39.GRCh38.genes.collapsed_only.gtf")
-
-# Reference FASTA + index + dict
-REF_FASTA=$(resolve_ref "Reference FASTA" "Homo_sapiens_assembly38_noALT_noHLA_noDecoy.fasta")
-REF_FASTA_FAI=$(resolve_ref "FASTA index" "Homo_sapiens_assembly38_noALT_noHLA_noDecoy.fasta.fai")
-REF_DICT=$(resolve_ref "FASTA dict" "Homo_sapiens_assembly38_noALT_noHLA_noDecoy.dict")
-
-# dbSNP
-DBSNP_VCF=$(resolve_ref "dbSNP VCF" "Homo_sapiens_assembly38.dbsnp138.vcf")
-DBSNP_IDX=$(resolve_ref "dbSNP index" "Homo_sapiens_assembly38.dbsnp138.vcf.idx")
-
-# Known indels
-KNOWN_VCF1=$(resolve_ref "Known indels 1" "Mills_and_1000G_gold_standard.indels.hg38.vcf.gz")
-KNOWN_VCF2=$(resolve_ref "Known indels 2" "Homo_sapiens_assembly38.known_indels.vcf.gz")
-KNOWN_VCF1_IDX=$(resolve_ref "Known indels index 1" "Mills_and_1000G_gold_standard.indels.hg38.vcf.gz.tbi")
-KNOWN_VCF2_IDX=$(resolve_ref "Known indels index 2" "Homo_sapiens_assembly38.known_indels.vcf.gz.tbi")
-
-# GATK image
-GATK_SIF=$(resolve_ref "GATK 4.6.1.0 SIF" "images/gatk_4.6.1.0.sif")
-
-# Gene list
-GENE_LIST=$(resolve_ref "Gene list" "genes.txt")
-
-# Mycoplasma genome (fallback: download if missing)
-MYCO_REF=$(resolve_ref "Mycoplasma genome" "GCF_000027325.1_ASM2732v1_genomic.fna.gz" \
-"wget -O \"$REF_DIR/GCF_000027325.1_ASM2732v1_genomic.fna.gz\" \
- https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/027/325/GCF_000027325.1_ASM2732v1/GCF_000027325.1_ASM2732v1_genomic.fna.gz")
-
-# PACNet training data (fallback: AWS S3 download if missing)
-PACNET_EXP=$(resolve_ref "PACNet expTrain" "Hs_expTrain_Jun-20-2017.rda" \
-"aws s3 cp s3://cellnet-rnaseq/ref/cnproc/HS/Hs_expTrain_Jun-20-2017.rda \"$REF_DIR/\" --no-sign-request")
-PACNET_ST=$(resolve_ref "PACNet stTrain" "Hs_stTrain_Jun-20-2017.rda" \
-"aws s3 cp s3://cellnet-rnaseq/ref/cnproc/HS/Hs_stTrain_Jun-20-2017.rda \"$REF_DIR/\" --no-sign-request")
+"mkdir -p $REF_DIR/rsem_reference && \
+ singularity exec $REF_DIR/gtex_rnaseq_v10.sif rsem-prepare-reference \
+   $REF_DIR/Homo_sapiens_assembly38_noALT_noHLA_noDecoy.fasta \
+   $REF_DIR/rsem_reference/rsem_reference \
+   --gtf $REF_DIR/gencode.v39.GRCh38.annotation.gtf \
+   --num-threads 4")
 
 # UCSC SNP142 common SNPs directory
-SNP142_DIR=$(resolve_ref "dbSNP142 directory" "chr")
-
-# NCBI reference genome FASTA
-NCBI_FASTA=$(resolve_ref "NCBI GRCh38 FASTA" "GCF_000001405.26/GCF_000001405.26_GRCh38_genomic.fna" \
-"wget -O \"$REF_DIR/GCF_000001405.26_GRCh38_genomic.fna\" \
- ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/001/405/GCF_000001405.26_GRCh38.p13")
-
+#SNP142_DIR=$(resolve_ref "dbSNP142 directory" "chr") #how to get from UCSC without using their interactive web table?? may need to be downloaded by user beforehand and included in provided /ref directory
 # ===========================================
 # Identify samples
 # ===========================================
