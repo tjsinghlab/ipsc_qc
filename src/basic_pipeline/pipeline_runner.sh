@@ -184,7 +184,7 @@ for sample in "${SAMPLES[@]}"; do
 
     # Only run if all outputs are missing
     if [ -f "$bam_file" ] && [ -f "$bai_file" ] && [ -f "$rsem_file" ]; then
-        echo "[SKIP] All outputs for $sample already exist."
+        echo "[SKIP] All outputs for $sample already exist in $sample_outdir."
     else
         echo "[RUN] Outputs missing for $sample, running pipeline..."
         (
@@ -200,17 +200,23 @@ for sample in "${SAMPLES[@]}"; do
     # ------------------------------------------------
     # STEP 2: Variant Calling
     # ------------------------------------------------
-    echo "[STEP] Calling germline variants for $sample..."
-
-    vcf_file="$sample_outdir/${sample}.vcf"
-    if [ -f "$vcf_file" ]; then
-        echo "[SKIP] VCF file for $sample already exists."
-    else
-        echo "[RUN] VCF file missing for $sample, running variant calling..."
-        (
-            python3 "$PY_RUNNER2" --bam "$bam_file" --bai "$bai_file" --outdir "$sample_outdir" --sample "$sample" > "$LOG_DIR/${sample}_wdl2.log" 2>&1
-        )
+    echo "[STEP] Calling germline variants for $sample at $sample_outdir using ${sample_outdir}/Mark_duplicates_outputs and logging to $LOG_DIR..."
+#########
+    link_path="${sample_outdir}/data"
+    if [ -L "$link_path" ]; then
+        rm "$link_path"
     fi
+#########
+    vcf_file="$sample_outdir/${sample}.vcf"
+    sample_outdir="$OUTPUT_DIR/$sample"
+    # if [ -f "$vcf_file" ]; then
+    #     echo "[SKIP] VCF file for $sample already exists."
+    # else
+    #     echo "[RUN] VCF file missing for $sample, running variant calling..."
+    #     (
+    python3 "$PY_RUNNER2" --output_dir "$sample_outdir" --sample "$sample" > "$LOG_DIR/${sample}_wdl2.log" 2>&1
+    #     )
+    # fi
 
     # ------------------------------------------------
     # STEP 3: QC Modules

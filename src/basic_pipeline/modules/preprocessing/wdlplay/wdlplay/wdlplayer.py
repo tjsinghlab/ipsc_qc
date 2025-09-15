@@ -113,13 +113,13 @@ class wdlplayer(object):
         os.symlink(self.scriptdir, os.path.join(
             self.outdir, 'current', 'script'), target_is_directory=True)
         
-        # add local /data folder links
+        #add local /data folder links
         if localdata != '':
             if os.path.islink(os.path.join(self.outdir, 'data')):
                 os.remove('data')
             os.symlink(localdata, os.path.join(
                 self.outdir, 'data'), target_is_directory=True)
-        
+
         # 0-based counter for submits made in script. Used for naming and tracking.
         self.current_run = current_run
 
