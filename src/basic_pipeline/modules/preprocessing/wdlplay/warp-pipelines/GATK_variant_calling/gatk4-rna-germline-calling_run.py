@@ -39,7 +39,7 @@ runner = wdlplayer(
     filedir=filedir,
     localdata=localdir,
     tmpdir=os.path.join(args.output_dir, "wdlplay_logs", "WholeGenomeProcessing", ".caper_tmp"),
-    caper_backend_tag='slurm'
+    caper_backend_tag='local'
 )
 
 # ------------------------------------------------
