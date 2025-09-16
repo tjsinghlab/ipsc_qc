@@ -8,12 +8,10 @@ This pipeline expects a directory of fastq.gz (paired end: R1 and R2) files from
 ## Table of Contents
 
 - [Requirements](#requirements)
-- [Directory Structure](#directory-structure)
 - [Inputs](#inputs)
-- [Pipeline Runner Arguments](#pipeline-runner-arguments)
-- [Reference Files](#reference-files)
 - [Running the Pipeline](#running-the-pipeline)
-- [Troubleshooting](#troubleshooting)
+- [Outputs](#outputs)
+- [Directory Structure](#directory-structure)
 
 ---
 
@@ -23,6 +21,8 @@ This pipeline expects a directory of fastq.gz (paired end: R1 and R2) files from
 - `Cosmic_CancerGeneCensus_Tsv_v101_GRCh37.tar`  
   *Cosmic Database; MUST BE DOWNLOADED BY USER AND PROVIDED IN COSMIC_DIR ARGUMENT. If not, cancer mutation calling will not be performed.*
 ### Reference Files (place in `ref/` directory; default is ./ref)
+- `genes.txt`
+  *File containing a list of oncogenes for assessment. Lives in this repo; download into your /ref dir (the one you provide to the --ref_dir argument), and add whichever genes you want analyzed against COSMIC.*
 #### If not included in user-provided reference directory (ref_dir), the following files will be automatically downloaded to ref_dir:
 - `star_index_oh75`
   *reference files for STAR; included in docker image*
@@ -100,7 +100,61 @@ The pipeline depends on the following command line tools:
 - `json`
 - `logzero` (logger)
 
+## Inputs
+
+### Input Directories
+- `fastq_dir/`  
+  *FASTQ files from sequencing run (bulk RNAseq)*
+- `--output_dir`  
+  *Path to desired output directory (created if it doesn't exist; default: `./outputs`)*
+- `--ref_dir`
+  *Path to directory where reference files will live. Absent ref files will be downloaded within the pipeline.*
+
+### Additional Arguments
+- `--project`  
+  *Name of project for this batch; appears in plots*
+
+**Note:**  
+File base names should be unique for each sample and consistent across file types  
+(e.g., `sample1.vcf`, `sample1.bam`, `sample1.genes.results`, `sample1_R1.fastq.gz`, `sample1_R2.fastq.gz`)
+
+
+### Required Directories
+
+| Argument         | Description                                                                | Default                        | Required |
+|------------------|----------------------------------------------------------------------------|--------------------------------|----------|
+| `--ref_dir`      | Directory for reference files                                       | `/refs`                        | Yes      |
+| `--fastq_dir`    | Directory containing input files (fastq.gz sequencing files) for a run     | `./fastq`                      | Yes      |
+| `--output_dir`   | Output directory                                                           | `./outputs`                    | No       |
+| `--cosmic_dir`   | Directory containing downloaded COSMIC database files.                     | `cosmic`                       | No       |
+| `--project`      | Project name                                                               | `default_project`              | No       |
+
 ---
+
+## Running the Pipeline
+
+Example command (replace all "my_***" directories with your actual directories)
+
+```
+#Download docker image as singularity image (for HPC compatibility):
+singularity pull ipsc_image_slim_withmake.sif docker://kjakubiak16/ipsc_image_slim_withmake:latest
+
+#Run the singularity command. First bind the directories, then supply bound directories as arguments.
+singularity exec \
+  -B ./test_fastqs:/data \
+  -B ./ref:/ref \
+  -B ./COSMIC_DB:/cosmic \
+  -B ./my_outputs:/output \
+  ipsc_image_slim_withmake.sif \
+  /pipeline/pipeline_runner.sh \
+  --fastq_dir /data \
+  --output_dir /output \
+  --ref_dir /ref \
+  --cosmic_dir /cosmic
+```
+
+## Outputs
+Expected outputs include:
 
 ## Directory Structure
 
@@ -158,123 +212,4 @@ basic_pipeline
        └── tarballs
            └── CellNet_master.tar.gz
 ```
-
-### Inputs
-The pipeline expects separate **reference** and **input** directories:
-
-inputs/
-- ├── ref_dir/ # Reference files (unchanging across runs; refs not present in this directory will automatically be downloaded)
-- ├── fastq_dir/ # Input files for a run (pipeline will loop over samples)
-- ├── output_dir/ # Output directory
-- └── cosmic_dir/ # User must download and provide COSMIC database files
-
 ---
-
-## Inputs
-
-### Input Directories
-- `fastq_dir/`  
-  *FASTQ files from sequencing run (bulk RNAseq)*
-- `--output_dir`  
-  *Path to desired output directory (created if it doesn't exist; default: `./outputs`)*
-- `--ref_dir`
-  *Path to directory where reference files will live. Absent ref files will be downloaded within the pipeline.*
-
-### Additional Arguments
-- `--project`  
-  *Name of project for this batch; appears in plots*
-
-**Note:**  
-File base names should be unique for each sample and consistent across file types  
-(e.g., `sample1.vcf`, `sample1.bam`, `sample1.genes.results`, `sample1_R1.fastq.gz`, `sample1_R2.fastq.gz`)
-
-
-### Required Directories
-
-| Argument         | Description                                                                | Default                        | Required |
-|------------------|----------------------------------------------------------------------------|--------------------------------|----------|
-| `--ref_dir`      | Directory for reference files                                       | `/refs`                        | Yes      |
-| `--fastq_dir`    | Directory containing input files (fastq.gz sequencing files) for a run     | `./fastq`                      | Yes      |
-| `--output_dir`   | Output directory                                                           | `./outputs`                    | No       |
-| `--cosmic_dir`   | Directory containing downloaded COSMIC database files.                     | `cosmic`                       | No       |
-| `--project`      | Project name                                                               | `default_project`              | No       |
-
-### Module-specific inputs
-
-#### Cancer Mutation Calling
-
-- **Refs**:  
-  - `ref/Cosmic_CancerGeneCensus_Tsc_v101_GRCh38.tar` (COSMIC Database)  
-  - `ref/genes.txt` — plain text file with genes of interest; default list if missing:  
-    ```
-    BRCA1
-    BRCA2
-    TP53
-    BCOR
-    EGFR
-    ```  
-- **Inputs**:  
-  - `inputs/vcfs/` — folder of VCF files from GATK variant calling  
-
-#### Mycoplasma Detection
-
-- **Refs**:  
-  - `ref/GCF_000027235.1_ASM273v1_genomic.fna.gz` — Mycoplasma genome  
-    > If missing, automatically downloaded from NCBI:  
-    ```bash
-    wget -O GCF_000027235.1_ASM273v1_genomic.fna.gz \
-    https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/027/235/GCF_000027235.1_ASM273v1/GCF_000027235.1_ASM273v1_genomic.fna.gz
-    ```  
-
-#### PACNet
-
-- **Refs**:  
-  - `ref/Hs_expTrain_Jun-20-2017.rda`  
-  - `ref/Hs_stTrain-Jun-20-2017.rda`  
-    > Can be downloaded automatically using AWS CLI (public S3, no credentials needed) in accordance with PACNet repo:  
-    ```bash
-    aws s3 cp s3://cellnet-rnaseq/ref/cnproc/HS/Hs_expTrain_Jun-20-2017.rda . --no-sign-request
-    aws s3 cp s3://cellnet-rnaseq/ref/cnproc/HS/Hs_stTrain-Jun-20-2017.rda . --no-sign-request
-    ```  
-- **Inputs**:  
-  - `inputs/RSEM/` — folder of RSEM outputs from preprocessing (pipeline will create gene expression matrix and metadata)  
-
-#### eSNPKaryo
-
-- **Refs**:  
-  - `ref/chr/` — directory containing dbSNP build 142 common SNP files (one per chromosome)  
-    - File names: `chr1` … `chr24` (human chromosomes 1–22, X=23, Y=24)  
-- **Inputs**:  
-  - `inputs/bams/` — BAM files from STAR alignment  
-  - `inputs/vcfs/` — same VCFs used for cancer mutation calling  
-
-#### Outlier Detection / Mycoplasma Detection (fastq)
-
-- **Inputs**:  
-  - `inputs/fastqs/` — folder of fastq.gz files from sequencing run (bulk RNA-seq)
-
----
-
-## Running the Pipeline
-
-Example command (replace all "my_***" directories with your actual directories)
-
-```
-#Download docker image as singularity image (for HPC compatibility):
-singularity pull ipsc_image_slim_withmake.sif docker://kjakubiak16/ipsc_image_slim_withmake:latest
-
-#Run the singularity command. First bind the directories, then supply bound directories as arguments.
-singularity exec \
-  -B ./test_fastqs:/data \
-  -B ./ref:/ref \
-  -B ./COSMIC_DB:/cosmic \
-  -B ./my_outputs:/output \
-  ipsc_image_slim_withmake.sif \
-  /pipeline/pipeline_runner.sh \
-  --fastq_dir /data \
-  --output_dir /output \
-  --ref_dir /ref \
-  --cosmic_dir /cosmic
-```
-
-
