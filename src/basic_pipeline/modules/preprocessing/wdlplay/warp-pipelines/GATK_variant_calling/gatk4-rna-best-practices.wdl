@@ -224,7 +224,7 @@ task gtfToCallingIntervals {
 
     runtime {
         singularity: docker
-				memory: "4 GB"
+				memory: "8 GB"
         preemptible: preemptible_count
     }
 }
@@ -244,7 +244,7 @@ task SplitNCigarReads {
     Int preemptible_count
 
     command <<<
-            ${gatk_path} --java-options "-Xms2000m -Xmx30g"\
+            ${gatk_path} --java-options "-Xms2000m -Xmx50g"\
                     SplitNCigarReads \
                     -R ${ref_fasta} \
                     -I ${input_bam} \
@@ -259,7 +259,7 @@ task SplitNCigarReads {
     runtime {
         disks: "local-disk " + sub(((size(input_bam,"GB")+1)*5 + size(ref_fasta,"GB")),"\\..*","") + " HDD"
         singularity: docker
-        memory: "32 GB"
+        memory: "64 GB"
         preemptible: preemptible_count
     }
 }
@@ -318,7 +318,7 @@ task BaseRecalibrator {
     Int preemptible_count
 
     command <<<
-        ${gatk_path} --java-options "-Xms4000m -Xmx30g" \
+        ${gatk_path} --java-options "-Xms4000m -Xmx50g" \
             BaseRecalibrator \
             -R ${ref_fasta} \
             -I ${input_bam} \
