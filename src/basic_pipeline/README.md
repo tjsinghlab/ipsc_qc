@@ -1,7 +1,7 @@
 # iPSC QC Pipeline
 
-This pipeline will screen bulk RNA sequencing data for several QC metrics, including cancer mutation calling (in select oncogenes), eSNPKaryotyping, mycoplasma detection, PACNet classification, and outlier assessment.
-This pipeline expects a directory of fastq.gz (paired end: R1 and R2) files from bulk RNA sequencing run.
+This pipeline will first process raw fastq files (bulk RNA sequencing) using fastqc, STAR alignment, and RSEM. GATK germline variant calling will be performed, in addition to several QC metrics, including cancer mutation calling (in select oncogenes), eSNPKaryotyping, mycoplasma detection, PACNet classification, and outlier assessment.
+This pipeline expects a directory of fastq.gz (paired end: R1 and R2) files from a bulk RNA sequencing run.
 
 ---
 
@@ -23,7 +23,7 @@ This pipeline expects a directory of fastq.gz (paired end: R1 and R2) files from
 - `Cosmic_CancerGeneCensus_Tsv_v101_GRCh37.tar`  
   *Cosmic Database; MUST BE DOWNLOADED BY USER AND PROVIDED IN COSMIC_DIR ARGUMENT. If not, cancer mutation calling will not be performed.*
 ### Reference Files (place in `ref/` directory; default is ./ref)
-#### Must be downloaded by user from *insert cloud link here*
+#### If not included in user-provided reference directory (ref_dir), the following files will be automatically downloaded to ref_dir:
 - `star_index_oh75`
   *reference files for STAR; included in docker image*
 - `rsem_reference`
@@ -67,19 +67,16 @@ This pipeline expects a directory of fastq.gz (paired end: R1 and R2) files from
 
 ### Tools
 The pipeline depends on the following command line tools:
-
+#### Must be installed by user (Ensure these tools are installed or available via a module system (ex. HPC users)):
+- `singularity`
+- `parallel`
+- `squashfuse`
+#### Command line tools included in Docker image:
 - `bowtie2`
 - `samtools`
 - `bcftools`
 - `vcftools`
-- `singularity`
-- `parallel`
-- `squashfuse`
-
-Ensure these tools are installed or available via a module system (ex. HPC users). For AWS CLI, make sure v2 is installed.
-R and Python packages will be included as part of the docker image.
-
-R packages included in the docker image:
+#### R packages included in the docker image:
 - `devtools`
 - `eSNPKaryotyping`
 - `zoo`
@@ -98,8 +95,7 @@ R packages included in the docker image:
 - `cancerCellNet`
 - `jsonlite`
 - `edgeR`
-
-Python packages included in the docker image:
+#### Python packages included in the docker image:
 - `os`
 - `json`
 - `logzero` (logger)
@@ -109,7 +105,6 @@ Python packages included in the docker image:
 ## Directory Structure
 
 ### Basic pipeline repo structure
-
 ```
 basic_pipeline
        ├── docker_image_structure
@@ -165,7 +160,6 @@ basic_pipeline
 ```
 
 ### Inputs
-
 The pipeline expects separate **reference** and **input** directories:
 
 inputs/
