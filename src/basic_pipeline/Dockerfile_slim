@@ -40,7 +40,13 @@ RUN wget https://github.com/apptainer/apptainer/releases/download/v1.1.9/apptain
 # R packages
 # ----------------------
 ENV CRAN_REPO=https://packagemanager.posit.co/cran/2024-01-01
-RUN R -e "install.packages(c('devtools','zoo','gplots','patchwork','ggplot2','optparse','dplyr','data.table','tidyr','fuzzyjoin','stringr','biomaRt','purrr','jsonlite','edgeR','rmarkdown','knitr'), repos='${CRAN_REPO}')" \
+
+RUN R -e "install.packages(c( \
+        'devtools','zoo','gplots','patchwork','ggplot2','optparse','dplyr', \
+        'data.table','tidyr','fuzzyjoin','stringr','purrr','jsonlite', \
+        'rmarkdown','knitr'), repos='${CRAN_REPO}')" \
+    && R -e "if (!requireNamespace('BiocManager', quietly=TRUE)) install.packages('BiocManager', repos='${CRAN_REPO}'); \
+             BiocManager::install(c('biomaRt','edgeR'), ask=FALSE, update=FALSE)" \
     && rm -rf /tmp/*
 
 # ----------------------
