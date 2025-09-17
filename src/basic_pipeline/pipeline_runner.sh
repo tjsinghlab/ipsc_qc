@@ -207,16 +207,15 @@ for sample in "${SAMPLES[@]}"; do
         rm "$link_path"
     fi
 #########
-    vcf_file="$sample_outdir/${sample}.vcf"
     sample_outdir="$OUTPUT_DIR/$sample"
-    # if [ -f "$vcf_file" ]; then
-    #     echo "[SKIP] VCF file for $sample already exists."
-    # else
-    #     echo "[RUN] VCF file missing for $sample, running variant calling..."
-    #     (
-    python3 "$PY_RUNNER2" --output_dir "$sample_outdir" --sample "$sample" > "$LOG_DIR/${sample}_wdl2.log" 2>&1
-    #     )
-    # fi
+    if ls "$sample_outdir/variant_calling/"*.vcf.gz 1> /dev/null 2>&1; then
+        echo "[SKIP] VCF file already present in $sample_outdir. Skipping variant calling for $sample."
+    else
+        echo "[RUN] VCF file missing for $sample, running variant calling..."
+        (
+            python3 "$PY_RUNNER2" --output_dir "$sample_outdir" --sample "$sample" > "$LOG_DIR/${sample}_wdl2.log" 2>&1
+        )
+    fi
 
     # ------------------------------------------------
     # STEP 3: QC Modules
