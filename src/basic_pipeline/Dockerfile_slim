@@ -39,22 +39,76 @@ RUN wget https://github.com/apptainer/apptainer/releases/download/v1.1.9/apptain
 # ----------------------
 # R packages
 # ----------------------
+# ENV CRAN_REPO=https://packagemanager.posit.co/cran/2024-01-01
+
+# RUN R -e "install.packages(c( \
+#         'devtools','zoo','gplots','patchwork','ggplot2','optparse','dplyr', \
+#         'data.table','tidyr','fuzzyjoin','stringr','purrr','jsonlite', \
+#         'rmarkdown','knitr'), repos='${CRAN_REPO}')" \
+#     && R -e "if (!requireNamespace('BiocManager', quietly=TRUE)) install.packages('BiocManager', repos='${CRAN_REPO}'); \
+#              BiocManager::install(c('biomaRt','edgeR'), ask=FALSE, update=FALSE)" \
+#     && rm -rf /tmp/*
+
+
+# RUN R -e "if (!requireNamespace('devtools', quietly=TRUE)) install.packages('devtools', repos='https://packagemanager.posit.co/cran/2024-01-01'); \
+#           devtools::install_github('pcahan1/CellNet', ref='master')"
+
+# ----------------------
+# CRAN repository
+# ----------------------
 ENV CRAN_REPO=https://packagemanager.posit.co/cran/2024-01-01
 
+# ----------------------
+# System dependencies needed for R package compilation
+# ----------------------
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libcurl4-openssl-dev \
+    libssl-dev \
+    libxml2-dev \
+    libfontconfig1-dev \
+    libfreetype6-dev \
+    libpng-dev \
+    libjpeg-dev \
+    libtiff5-dev \
+    libcairo2-dev \
+    libharfbuzz-dev \
+    libfribidi-dev \
+    pkg-config \
+    git \
+ && rm -rf /var/lib/apt/lists/*
+
+
+# ----------------------
+# Install CRAN packages
+# ----------------------
 RUN R -e "install.packages(c( \
         'devtools','zoo','gplots','patchwork','ggplot2','optparse','dplyr', \
         'data.table','tidyr','fuzzyjoin','stringr','purrr','jsonlite', \
-        'rmarkdown','knitr'), repos='${CRAN_REPO}')" \
-    && R -e "if (!requireNamespace('BiocManager', quietly=TRUE)) install.packages('BiocManager', repos='${CRAN_REPO}'); \
-             BiocManager::install(c('biomaRt','edgeR'), ask=FALSE, update=FALSE)" \
-    && rm -rf /tmp/*
+        'rmarkdown','knitr','igraph','reshape2'), repos='${CRAN_REPO}')"
+
+# ----------------------
+# Install Bioconductor packages
+# ----------------------
+RUN R -e "if (!requireNamespace('BiocManager', quietly=TRUE)) install.packages('BiocManager', repos='${CRAN_REPO}'); \
+          BiocManager::install(c('biomaRt','edgeR'), ask=FALSE, update=FALSE)"
+
+# ----------------------
+# Install CellNet from GitHub
+# ----------------------
+RUN R -e "devtools::install_github('pcahan1/CellNet', ref='master', \
+            dependencies=TRUE, lib='/usr/local/lib/R/site-library')"
+
+RUN R -e "devtools::install_github('pcahan1/cancerCellNet', ref='master', \
+            dependencies=TRUE, lib='/usr/local/lib/R/site-library')"
 
 # ----------------------
 # Install CellNet from tarball (clean after install)
 # ----------------------
-COPY CellNet_*.tar.gz /tmp/
-RUN R -e "install.packages('/tmp/CellNet_*.tar.gz', repos=NULL, type='source')" \
-    && rm -f /tmp/CellNet_*.tar.gz
+# COPY CellNet_*.tar.gz /tmp/
+
+# RUN R -e 'install.packages(list.files("/tmp", pattern="CellNet_.*\\.tar\\.gz$", full.names=TRUE), repos=NULL, type="source")' \
+#     && rm -f /tmp/CellNet_*.tar.gz
 
 # ----------------------
 # Set up workspace
