@@ -85,7 +85,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN R -e "install.packages(c( \
         'devtools','zoo','gplots','patchwork','ggplot2','optparse','dplyr', \
         'data.table','tidyr','fuzzyjoin','stringr','purrr','jsonlite', \
-        'rmarkdown','knitr','igraph','reshape2'), repos='${CRAN_REPO}')"
+        'rmarkdown','knitr','igraph','reshape2','R.utils'), repos='${CRAN_REPO}')"
 
 # ----------------------
 # Install Bioconductor packages
