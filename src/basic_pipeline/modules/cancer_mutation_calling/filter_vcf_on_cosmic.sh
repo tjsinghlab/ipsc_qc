@@ -3,21 +3,18 @@ set -euo pipefail
 
 # Defaults
 SAMPLE=""
-VCF_GZ_FILE=""
 COSMIC_TAR=""
 OUTPUT_DIR=""
 REF_DIR=""
 
-# Gene list is fixed inside Docker image
-GENE_LIST="$REF_DIR/gene_list.txt"
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --sample) SAMPLE="$2"; shift 2 ;;
-    --vcf) VCF_GZ_FILE="$2"; shift 2 ;;
     --cosmic) COSMIC_TAR="$2"; shift 2 ;;
     --output_dir) OUTPUT_DIR="$2"; shift 2 ;;
+    --ref_dir) REF_DIR="$2"; shift 2 ;;
     -h|--help)
       echo "Usage: $0 --sample Sample name --vcf input.vcf.gz --cosmic user-downloaded COSMIC reference file --output_dir directory to sample-specific output directory"
       exit 0
@@ -30,13 +27,15 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Check required arguments
-if [[ -z "$SAMPLE" || -z "$VCF_GZ_FILE" || -z "$COSMIC_TAR" || -z "$OUTPUT_DIR" || -z "$REF_DIR"]]; then
+if [[ -z "$SAMPLE" || -z "$COSMIC_TAR" || -z "$OUTPUT_DIR" || -z "$REF_DIR"]]; then
   echo "Error: Missing required arguments."
   echo "Run with --help for usage."
   exit 1
 fi
 
 # Validate input files
+VCF_GZ_FILE="${OUTPUT_DIR}/${SAMPLE}_variants.vcf.gz"
+
 for f in "$VCF_GZ_FILE" "$COSMIC_TAR" "$GENE_LIST"; do
   if [[ ! -f "$f" ]]; then
     echo "Error: File not found - $f"
@@ -49,6 +48,9 @@ mkdir -p "$(dirname "$OUTPUT_DIR")"
 
 # Create sample-specific temp directory
 TEMP_DIR=$(mktemp -d -t cosmic_${SAMPLE}_XXXX)
+
+# Gene list is fixed inside Docker image
+GENE_LIST="$REF_DIR/gene_list.txt"
 
 # Extract COSMIC tar file
 echo "[INFO][$SAMPLE] Extracting COSMIC data..."
