@@ -21,7 +21,7 @@ option_list <- list(
   make_option("--bam", type="character", default=file.path(cwd, "bams"),
               help="Path to BAM file for sample", metavar="character"),
   make_option("--ref_dir", type = "character", default = "/ref",
-            help = "Reference directory inside Docker image (default: /ref)"),
+              help = "Reference directory inside Docker image (default: /ref)"),
   make_option("--vcf", type="character", default=file.path(cwd, "vcfs"),
               help="Path to VCF file for sample", metavar="character"),
   make_option("--sample", type="character", default=NULL,
@@ -116,7 +116,10 @@ variant_table <- variant_table[order(variant_table$chr, variant_table$position),
 variant_table <- variant_table[variant_table$chr > 0, ]
 
 table2 <- MajorMinorCalc(Table = variant_table, minDP = 20, maxDP = 1000000, minAF = 0.2)
+
+png(file.path(output_dir, paste0(sample, "_PlotGenome.png")), width = 2000, height = 1200, res = 150)
 PlotGenome(table2, Window = 151, Organism = "Human", Ylim = 3, PValue = TRUE)
+dev.off()
 
 # -----------------------------
 # Run DeletionTable
@@ -140,6 +143,7 @@ DeletionTable <- function(Directory, Table, dbSNP_Data_Directory, dbSNP_File_Nam
   x <- merge(snpTable, Table, by = c("chr","position"), all.x = TRUE)
   x <- x[order(x$chr,x$position),]
   
+  dir.create(Directory, recursive = TRUE, showWarnings = FALSE)
   setwd(Directory)
   system(paste("samtools index", shQuote(bam_file)))
   
@@ -189,5 +193,10 @@ tbl <- DeletionTable(
   bam_file = bam_file
 )
 
+png(file.path(output_dir, paste0(sample, "_Zygosity_Single.png")), width = 2000, height = 1200, res = 150)
 Plot_Zygosity_Sinle(Table = tbl, Organism = "Human")
+dev.off()
+
+png(file.path(output_dir, paste0(sample, "_Zygosity_Blocks.png")), width = 2000, height = 1200, res = 150)
 Plot_Zygosity_Blocks(Table = tbl, Window = 1500000, Max = 6, Max2 = 60, Organism = "Human")
+dev.off()
