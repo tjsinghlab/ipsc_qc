@@ -22,8 +22,6 @@ option_list <- list(
               help="Path to BAM file for sample", metavar="character"),
   make_option("--ref_dir", type = "character", default = "/ref",
               help = "Reference directory inside Docker image (default: /ref)"),
-  make_option("--vcf", type="character", default=file.path(cwd, "vcfs"),
-              help="Path to VCF file for sample", metavar="character"),
   make_option("--sample", type="character", default=NULL,
               help="Sample name", metavar="character")
 )
@@ -34,7 +32,6 @@ output_dir <- opt$output_dir
 output_dir <- file.path(output_dir, "eSNPKaryotyping")
 ref_dir <- opt$ref_dir
 bam_dir <- opt$bam
-vcf_dir <- opt$vcf
 sample <- opt$sample
 
 if (is.null(sample)) stop("Error: --sample must be provided!")
@@ -53,7 +50,7 @@ Edit_dbSNP_Files(
 # -----------------------------
 # Edit VCF & generate variant table
 # -----------------------------
-vcf_file <- file.path(vcf_dir, paste0(sample, ".variant_filtered.vcf.gz"))
+vcf_file <- file.path(output_dir, "variant_calling", paste0(sample, sample, ".variant_filtered.vcf.gz"))
 if (!file.exists(vcf_file)) stop(paste("VCF file not found:", vcf_file))
 
 readData <- read.delim(vcf_file, as.is = TRUE)
