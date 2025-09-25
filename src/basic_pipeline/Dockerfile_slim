@@ -102,6 +102,9 @@ RUN R -e "devtools::install_github('pcahan1/CellNet', ref='master', \
 RUN R -e "devtools::install_github('pcahan1/cancerCellNet', ref='master', \
             dependencies=TRUE, lib='/usr/local/lib/R/site-library')"
 
+RUN R -e "devtools::install_github('BenvenLab/eSNPKaryotyping/eSNPKaryotyping', ref='master', \
+            dependencies=TRUE, lib='/usr/local/lib/R/site-library')"
+
 # ----------------------
 # Install CellNet from tarball (clean after install)
 # ----------------------
