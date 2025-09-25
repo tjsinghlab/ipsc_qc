@@ -45,7 +45,7 @@ dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 # Edit dbSNP files (once only)
 # -----------------------------
 Edit_dbSNP_Files(
-  Directory = file.path(ref_dir, "chr"), 
+  Directory = file.path(ref_dir, "chr/"), 
   File_Name = "chr", 
   Organism = "Human"
 )
