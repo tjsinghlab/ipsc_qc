@@ -211,22 +211,16 @@ Rscript /pipeline/modules/PACNet/run_pacnet.R \
     --project "$PROJECT" \
     > "$LOG_DIR/pacnet_all.log" 2>&1
 
+echo "[STEP] Outlier detection for $sample..."
+Rscript /pipeline/modules/outlier_detection/outlier_detection.R \
+    --output_dir "$OUTPUT_DIR" --sample "$sample" --project "$PROJECT" \
+    > "$LOG_DIR/outliers_${sample}.log" 2>&1
+
 # Now loop again for per-sample downstream modules
 for sample in "${SAMPLES[@]}"; do
     sample_outdir="$OUTPUT_DIR/$sample"
     fq1="${FASTQ_DIR}/${sample}_R1_001.fastq.gz"
     fq2="${FASTQ_DIR}/${sample}_R2_001.fastq.gz"
-
-    if [[ -n "$COSMIC_DIR" ]]; then
-        echo "[STEP] COSMIC mutation calling for $sample..."
-        bash /pipeline/modules/cancer_mutation_calling/filter_vcf_on_cosmic.sh \
-            --ref_dir "$REF_DIR" --cosmic_dir "$COSMIC_DIR" --output_dir "$sample_outdir" --sample "$sample" \
-            > "$LOG_DIR/filtered_vcf_for_cosmic_${sample}.log" 2>&1
-
-        Rscript /pipeline/modules/cancer_mutation_calling/cancer_mutation_mapping.R \
-            --ref_dir "$REF_DIR" --cosmic_dir "$COSMIC_DIR" --output_dir "$sample_outdir" --sample "$sample" \
-            > "$LOG_DIR/cancer_mutation_mapping_${sample}.log" 2>&1
-    fi
 
     echo "[STEP] eSNPKaryotyping for $sample..."
     Rscript /pipeline/modules/eSNPKaryotyping/run_eSNPKaryotyping.R \
@@ -238,10 +232,19 @@ for sample in "${SAMPLES[@]}"; do
         --fastq "$fq1" "$fq2" --ref_dir "$REF_DIR" --output_dir "$sample_outdir" --sample "$sample" \
         > "$LOG_DIR/mycoplasma_${sample}.log" 2>&1
 
-    echo "[STEP] Outlier detection for $sample..."
-    Rscript /pipeline/modules/outlier_detection/outlier_detection.R \
-        --output_dir "$sample_outdir" --sample "$sample" --project "$PROJECT" \
-        > "$LOG_DIR/outliers_${sample}.log" 2>&1
+    if [[ -n "$COSMIC_DIR" ]]; then
+        echo "[STEP] COSMIC mutation calling for $sample..."
+        # bash /pipeline/modules/cancer_mutation_calling/filter_vcf_on_cosmic.sh \
+        #     --ref_dir "$REF_DIR" --cosmic_dir "$COSMIC_DIR" --output_dir "$sample_outdir" --sample "$sample" \
+        #     > "$LOG_DIR/filtered_vcf_for_cosmic_${sample}.log" 2>&1
+
+        # Rscript /pipeline/modules/cancer_mutation_calling/cancer_mutation_mapping.R \
+        #     --ref_dir "$REF_DIR" --cosmic_dir "$COSMIC_DIR" --output_dir "$sample_outdir" --sample "$sample" \
+        #     > "$LOG_DIR/cancer_mutation_mapping_${sample}.log" 2>&1
+        Rscript /pipeline/modules/cancer_mutation_calling/COSMIC_cancer_mutation_calling.r \
+            --ref_dir "$REF_DIR" --cosmic_dir "$COSMIC_DIR" --output_dir "$sample_outdir" --sample "$sample" \
+            > "$LOG_DIR/cancer_mutation_mapping_${sample}.log" 2>&1
+    fi
 
     echo "[STEP] Generating HTML summary for $sample..."
     Rscript /pipeline/modules/report_builder/generate_html_summary.R \
