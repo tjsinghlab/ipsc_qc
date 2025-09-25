@@ -31,17 +31,18 @@ message("[INFO] Processing sample: ", sample)
 # -------------------------------
 # Load per-sample count matrix
 # -------------------------------
-counts_file  <- file.path(output_dir, "query_matrix.csv")
+counts_file  <- file.path(output_dir, "pacnet/query_matrix.csv")
 if (!file.exists(counts_file)) stop("Counts file not found: ", counts_file)
 counts <- read.csv(counts_file, row.names = 1)
-
-cpm_counts <- cpm(counts)
+counts_new<-na.omit(counts)
+cpm_counts <- cpm(counts_new)
 log_counts <- log2(cpm_counts + 1)
 log_counts_filtered <- log_counts[apply(log_counts, 1, var) > 0, ]
 
 # PCA on counts
 pca_counts <- prcomp(t(log_counts_filtered), scale. = TRUE)
-pcs_counts <- pca_counts$x[, 1:5]
+pc_count<-min(ncol(log_counts_filtered), 5)
+pcs_counts <- pca_counts$x[, 1:pc_count]
 
 # Detect outliers using Mahalanobis distance
 md_counts <- mahalanobis(pcs_counts, colMeans(pcs_counts), cov(pcs_counts))
@@ -66,7 +67,7 @@ ggsave(filename = counts_pdf, plot = pca_plot_counts, width = 8, height = 6)
 # -------------------------------
 # PCA on PACNet ESC scores
 # -------------------------------
-scores_file <- file.path(sample_outdir, "classification_scores.csv")
+scores_file <- file.path(output_dir, "pacnet/classification_scores.csv")
 if (!file.exists(scores_file)) stop("PACNet scores file not found: ", scores_file)
 scores <- read.csv(scores_file, row.names = 1)
 
