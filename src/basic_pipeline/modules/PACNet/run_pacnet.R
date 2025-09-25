@@ -261,6 +261,7 @@ cat("names(grp_names1):", names(grp_names1), "\n")
 #classMatrixEx <- classMatrixEx[,names(grp_names1)]
 
 write.csv(classMatrixEx, file="classification_scores.csv")
+write.csv(querySampTab, file="classification_sample_table.csv")
 
 ####################################
 ######### Generate Heatmap #########
