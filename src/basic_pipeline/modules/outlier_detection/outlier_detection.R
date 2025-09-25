@@ -31,7 +31,7 @@ message("[INFO] Processing sample: ", sample)
 # -------------------------------
 # Load per-sample count matrix
 # -------------------------------
-counts_file  <- file.path(sample_outdir, "query_matrix.csv")
+counts_file  <- file.path(output_dir, "query_matrix.csv")
 if (!file.exists(counts_file)) stop("Counts file not found: ", counts_file)
 counts <- read.csv(counts_file, row.names = 1)
 
