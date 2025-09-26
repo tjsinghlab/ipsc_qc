@@ -62,7 +62,7 @@ if not os.path.exists(bam_file) or not os.path.exists(bai_file):
     raise FileNotFoundError(f"Missing BAM or BAI for sample {args.sample} in {bam_dir}")
 
 # Variant calling output dir
-vcf_out = os.path.join(args.output_dir, "variant_calling", args.sample)
+vcf_out = os.path.join(args.output_dir, "variant_calling")
 os.makedirs(vcf_out, exist_ok=True)
 
 inputs["RNAseq.inputBam"] = bam_file
