@@ -172,13 +172,15 @@ for sample in "${SAMPLES[@]}"; do
     fq1="${FASTQ_DIR}/${sample}_R1_001.fastq.gz"
     fq2="${FASTQ_DIR}/${sample}_R2_001.fastq.gz"
 
-    bam_file="$sample_outdir/star_out/${sample}.Aligned.sortedByCoord.out.bam"
+    bam_file="$sample_outdir/Mark_duplicates_outputs/${sample}.Aligned.sortedByCoord.out.md.bam"
+
     bai_file="${bam_file}.bai"
     rsem_file="$sample_outdir/RSEM_outputs/${sample}.rsem.genes.results.gz"
 
+    echo "Looking for $bam_file and $rsem_file"
     # Step 1: Preprocessing
-    if [ -f "$bam_file" ] && [ -f "$bai_file" ] && [ -f "$rsem_file" ]; then
-        echo "[SKIP] Preprocessing already done for $sample"
+    if [ -f "$bam_file" ] && [ -f "$rsem_file" ]; then
+        echo "[SKIP] $bam_file and $rsem_file already present. Skipping preprocessing for $sample"
     else
         echo "[RUN] Running preprocessing for $sample..."
         python3 "$PY_RUNNER1" \
@@ -190,8 +192,9 @@ for sample in "${SAMPLES[@]}"; do
     fi
 
     # Step 2: Variant Calling
-    if ls "$sample_outdir/variant_calling/"*.vcf.gz 1> /dev/null 2>&1; then
-        echo "[SKIP] Variant calling already done for $sample"
+    if [ -d "$sample_outdir/variant_calling" ] && \
+    compgen -G "$sample_outdir/variant_calling/*.vcf.gz" > /dev/null; then
+        echo "[SKIP] Variant calling outputs already present at $sample_outdir/variant_calling/. Skipping variant calling for $sample"
     else
         echo "[RUN] Running variant calling for $sample..."
         python3 "$PY_RUNNER2" \
@@ -229,18 +232,11 @@ for sample in "${SAMPLES[@]}"; do
 
     echo "[STEP] Mycoplasma detection for $sample..."
     bash /pipeline/modules/mycoplasma_detection/detect_mycoplasma.sh \
-        --fastq "$fq1" "$fq2" --ref_dir "$REF_DIR" --output_dir "$sample_outdir" --sample "$sample" \
+        --fastq1 "$fq1" --fastq2 "$fq2" --ref_dir "$REF_DIR" --output_dir "$sample_outdir" --sample "$sample" \
         > "$LOG_DIR/mycoplasma_${sample}.log" 2>&1
 
     if [[ -n "$COSMIC_DIR" ]]; then
         echo "[STEP] COSMIC mutation calling for $sample..."
-        # bash /pipeline/modules/cancer_mutation_calling/filter_vcf_on_cosmic.sh \
-        #     --ref_dir "$REF_DIR" --cosmic_dir "$COSMIC_DIR" --output_dir "$sample_outdir" --sample "$sample" \
-        #     > "$LOG_DIR/filtered_vcf_for_cosmic_${sample}.log" 2>&1
-
-        # Rscript /pipeline/modules/cancer_mutation_calling/cancer_mutation_mapping.R \
-        #     --ref_dir "$REF_DIR" --cosmic_dir "$COSMIC_DIR" --output_dir "$sample_outdir" --sample "$sample" \
-        #     > "$LOG_DIR/cancer_mutation_mapping_${sample}.log" 2>&1
         Rscript /pipeline/modules/cancer_mutation_calling/COSMIC_cancer_mutation_calling.r \
             --ref_dir "$REF_DIR" --cosmic_dir "$COSMIC_DIR" --output_dir "$sample_outdir" --sample "$sample" \
             > "$LOG_DIR/cancer_mutation_mapping_${sample}.log" 2>&1
