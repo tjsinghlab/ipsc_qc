@@ -42,8 +42,8 @@ dir.create(file.path(output_dir, "cosmic_calling"), recursive = TRUE, showWarnin
 # -----------------------
 # Load COSMIC data
 # -----------------------
-cosmic_tar <- file.path(cosmic_dir, "Cosmic_CancerGeneCensus_Tsv_v101_GRCh38.tar")
-untar(cosmic_tar, exdir = cosmic_dir)
+# cosmic_tar <- file.path(cosmic_dir, "Cosmic_CancerGeneCensus_Tsv_v101_GRCh38.tar")
+# untar(cosmic_tar, exdir = cosmic_dir)
 
 cosmic_file <- file.path(cosmic_dir, "Cosmic_MutantCensus_v101_GRCh38.tsv.gz")
 if (!file.exists(cosmic_file)) {
