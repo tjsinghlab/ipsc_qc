@@ -5,13 +5,15 @@ set -euo pipefail
 # -------------------------------
 # Parse named arguments
 # -------------------------------
-FASTQ_DIR=""
+FASTQ1_DIR=""
+FASTQ2_DIR=""
 OUTPUT_DIR=""
 SAMPLE=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --fastq) FASTQ_DIR="$2"; shift 2 ;;
+    --fastq1) FASTQ1_DIR="$2"; shift 2 ;;
+    --fastq2) FASTQ2_DIR="$2"; shift 2 ;;
     --output_dir) OUTPUT_DIR="$2"; shift 2 ;;
     --sample) SAMPLE="$2"; shift 2 ;;
     --ref_dir) REF_DIR="$2"; shift 2 ;;
@@ -32,7 +34,7 @@ if [[ -z "$SAMPLE" ]]; then
     exit 1
 fi
 
-[[ -d "$FASTQ_DIR" ]] || { echo "[ERROR] Directory not found: $FASTQ_DIR"; exit 1; }
+# [[ -d "$FASTQ_DIR" ]] || { echo "[ERROR] Directory not found: $FASTQ_DIR"; exit 1; }
 
 SAMPLE_OUT="$OUTPUT_DIR/mycoplasma"
 mkdir -p "$SAMPLE_OUT"
@@ -60,8 +62,8 @@ INDEX_PREFIX="$OUTPUT_DIR/mycoplasma/mycoplasma_index"
 # -------------------------------
 # Alignment
 # -------------------------------
-fq1="$FASTQ_DIR/${SAMPLE}_R1.fastq.gz"
-fq2="$FASTQ_DIR/${SAMPLE}_R2.fastq.gz"
+fq1=$FASTQ1_DIR
+fq2=$FASTQ2_DIR
 
 [[ -f "$fq1" ]] || { echo "[ERROR] FASTQ file not found: $fq1"; exit 1; }
 
