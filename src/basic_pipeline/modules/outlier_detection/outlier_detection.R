@@ -26,7 +26,7 @@ sample <- opt$sample
 output_dir <- opt$output_dir
 sample_outdir <- file.path(output_dir, "pacnet")
 
-message("[INFO] Processing sample: ", sample)
+message("[INFO] Processing samples.")
 
 # -------------------------------
 # Load per-sample count matrix
@@ -61,7 +61,7 @@ pca_plot_counts <- ggplot(df_counts, aes(x = PC1, y = PC2, color = Outlier, labe
   labs(title = paste(project_name, "- PCA: Expression Counts"))
 
 # Save counts PCA
-counts_pdf <- file.path(output_dir, "pacnet/PCA_counts.pdf"))
+counts_pdf <- file.path(output_dir, "pacnet/PCA_counts.pdf")
 ggsave(filename = counts_pdf, plot = pca_plot_counts, width = 8, height = 6)
 
 # -------------------------------
@@ -94,7 +94,7 @@ pca_plot_scores <- ggplot(df_scores, aes(x = PC1, y = PC2, color = Outlier, labe
   labs(title = paste(project_name, "- PCA: PACNet ESC Scores"))
 
 # Save PACNet PCA
-scores_pdf <- file.path(output_dir, "outlier_analysis/PCA_pacnet_scores.pdf"))
+scores_pdf <- file.path(output_dir, "outlier_analysis/PCA_pacnet_scores.pdf")
 ggsave(filename = scores_pdf, plot = pca_plot_scores, width = 8, height = 6)
 
 message("[INFO] PCA plots saved.")
