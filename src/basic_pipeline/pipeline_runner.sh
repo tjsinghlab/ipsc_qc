@@ -215,9 +215,14 @@ Rscript /pipeline/modules/PACNet/run_pacnet.R \
     > "$LOG_DIR/pacnet_all.log" 2>&1
 
 echo "[STEP] Outlier detection for all samples..."
-Rscript /pipeline/modules/outlier_detection/outlier_detection.R \
-    --output_dir "$OUTPUT_DIR" --sample "$sample" --project "$PROJECT" \
-    > "$LOG_DIR/outliers_${sample}.log" 2>&1
+if [[ ${#SAMPLES[@]} -ge 4 ]]; then
+    echo "[STEP] Running outlier detection for all samples..."
+    Rscript /pipeline/modules/outlier_detection/outlier_detection.R \
+        --output_dir "$OUTPUT_DIR" --project "$PROJECT" \
+        > "$LOG_DIR/outliers_all_samples.log" 2>&1
+else
+    echo "[SKIP] Outlier detection skipped: only ${#SAMPLES[@]} sample(s) found (minimum 4 required)."
+fi
 
 # Now loop again for per-sample downstream modules
 echo "[STEP] Running per-sample downstream analyses..."
