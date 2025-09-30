@@ -129,13 +129,18 @@ sample_name <- align_stats$Sample[1]
 df <- data.frame(x = seq(0, 100, length.out = 500), y = 1)
 
 p <- ggplot(df, aes(x = x, y = y)) +
-  geom_tile(aes(x = x, y = y, fill = x), height = 0.6) +
+  geom_tile(aes(x = x, y = y, fill = x), height = 0.2) +
   scale_fill_gradient(low = "skyblue", high = "red", guide = "none") +
-  geom_point(aes(x = percent, y = 1.3), shape = 18, size = 5) +
-  annotate("text", x = percent, y = 1.5, label = sprintf("%.4f%%", percent), vjust = 0) +
-  labs(title = paste0("Mycoplasma alignment — ", sample_name)) +
+  geom_vline(xintercept = percent, color = "black", size = 1) +
+  annotate("segment", x = percent, xend=percent, y = 0.3, arrow=arrow(length=unit(0.2,"cm")), color="black", size=0.8)+
+  annotate("text", x=percent, y=0.8, label = sprintf("%.4f%%", percent), vjust = 0, size=5) +
+  labs(title = paste0("Mycoplasma alignment — ", sample_name),
+  x= "Percent Aligned to Mycoplasma Genome", y=NULL) +
   theme_void(base_size = 14) +
-  theme(plot.title = element_text(hjust = 0.5))
+  theme(axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        panel.grid = element_blank(),
+        plot.title = element_text(hjust = 0.5))
 
 out_pdf <- file.path(dirname(ALIGN_STATS), "mycoplasma_alignment_summary.pdf")
 out_png <- file.path(dirname(ALIGN_STATS), "mycoplasma_alignment_summary.png")
