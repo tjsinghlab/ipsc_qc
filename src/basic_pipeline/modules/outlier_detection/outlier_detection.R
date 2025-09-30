@@ -58,10 +58,10 @@ pca_plot_counts <- ggplot(df_counts, aes(x = PC1, y = PC2, color = Outlier, labe
   geom_point(size = 3) +
   geom_text(hjust = 1.2, vjust = 1.2, size = 3) +
   theme_minimal() +
-  labs(title = paste(project_name, "-", sample, "- PCA: Expression Counts"))
+  labs(title = paste(project_name, "- PCA: Expression Counts"))
 
 # Save counts PCA
-counts_pdf <- file.path(output_dir, paste0(project_name, "_", sample, "_PCA_counts.pdf"))
+counts_pdf <- file.path(output_dir, paste0(project_name, "_PCA_counts.pdf"))
 ggsave(filename = counts_pdf, plot = pca_plot_counts, width = 8, height = 6)
 
 # -------------------------------
@@ -90,12 +90,12 @@ pca_plot_scores <- ggplot(df_scores, aes(x = PC1, y = PC2, color = Outlier, labe
   geom_point(size = 3) +
   geom_text(hjust = 1.2, vjust = 1.2, size = 3) +
   theme_minimal() +
-  labs(title = paste(project_name, "-", sample, "- PCA: PACNet ESC Scores"))
+  labs(title = paste(project_name, "- PCA: PACNet ESC Scores"))
 
 # Save PACNet PCA
 scores_pdf <- file.path(output_dir, paste0(project_name, "_", sample, "_PCA_pacnet_scores.pdf"))
 ggsave(filename = scores_pdf, plot = pca_plot_scores, width = 8, height = 6)
 
-message("[INFO] PCA plots saved for sample: ", sample)
+message("[INFO] PCA plots saved.")
 message("[INFO] Counts PCA: ", counts_pdf)
 message("[INFO] PACNet PCA: ", scores_pdf)

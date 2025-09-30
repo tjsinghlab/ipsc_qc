@@ -214,7 +214,7 @@ Rscript /pipeline/modules/PACNet/run_pacnet.R \
     --project "$PROJECT" \
     > "$LOG_DIR/pacnet_all.log" 2>&1
 
-echo "[STEP] Outlier detection for $sample..."
+echo "[STEP] Outlier detection for all samples..."
 Rscript /pipeline/modules/outlier_detection/outlier_detection.R \
     --output_dir "$OUTPUT_DIR" --sample "$sample" --project "$PROJECT" \
     > "$LOG_DIR/outliers_${sample}.log" 2>&1
