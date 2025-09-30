@@ -61,13 +61,14 @@ pca_plot_counts <- ggplot(df_counts, aes(x = PC1, y = PC2, color = Outlier, labe
   labs(title = paste(project_name, "- PCA: Expression Counts"))
 
 # Save counts PCA
-counts_pdf <- file.path(output_dir, paste0(project_name, "_PCA_counts.pdf"))
+counts_pdf <- file.path(output_dir, "pacnet/PCA_counts.pdf"))
 ggsave(filename = counts_pdf, plot = pca_plot_counts, width = 8, height = 6)
 
 # -------------------------------
 # PCA on PACNet ESC scores
 # -------------------------------
-scores_file <- file.path(output_dir, "pacnet/classification_scores.csv")
+dir.create(file.path(output_dir, "outlier_analysis"), recursive = TRUE, showWarnings = FALSE)
+scores_file <- file.path(output_dir, "outlier_analysis/classification_scores.csv")
 if (!file.exists(scores_file)) stop("PACNet scores file not found: ", scores_file)
 scores <- read.csv(scores_file, row.names = 1)
 
@@ -93,7 +94,7 @@ pca_plot_scores <- ggplot(df_scores, aes(x = PC1, y = PC2, color = Outlier, labe
   labs(title = paste(project_name, "- PCA: PACNet ESC Scores"))
 
 # Save PACNet PCA
-scores_pdf <- file.path(output_dir, paste0(project_name, "_", sample, "_PCA_pacnet_scores.pdf"))
+scores_pdf <- file.path(output_dir, "outlier_analysis/PCA_pacnet_scores.pdf"))
 ggsave(filename = scores_pdf, plot = pca_plot_scores, width = 8, height = 6)
 
 message("[INFO] PCA plots saved.")
