@@ -70,25 +70,46 @@ fq2=$FASTQ2_DIR
 OUT_PREFIX="$SAMPLE_OUT/${SAMPLE}"
 
 if [[ -f "$fq2" ]]; then
-    bowtie2 -x "$INDEX_PREFIX" -1 "$fq1" -2 "$fq2" -S "${OUT_PREFIX}.sam" --no-unal 2> "${OUT_PREFIX}_bowtie2.log"
+    bowtie2 -x "$INDEX_PREFIX" -1 "$fq1" -2 "$fq2" -S "${OUT_PREFIX}.sam" 2> "${OUT_PREFIX}_bowtie2.log"
 else
-    bowtie2 -x "$INDEX_PREFIX" -U "$fq1" -S "${OUT_PREFIX}.sam" --no-unal 2> "${OUT_PREFIX}_bowtie2.log"
+    bowtie2 -x "$INDEX_PREFIX" -U "$fq1" -S "${OUT_PREFIX}.sam" 2> "${OUT_PREFIX}_bowtie2.log"
 fi
 
-samtools view -bS "${OUT_PREFIX}.sam" | samtools sort -o "${OUT_PREFIX}_sorted.bam"
+samtools view -bS -@ 4 "${OUT_PREFIX}.sam" -o "${OUT_PREFIX}.bam"
+samtools sort -@ 4 -o "${OUT_PREFIX}_sorted.bam" "${OUT_PREFIX}.bam"
 samtools index "${OUT_PREFIX}_sorted.bam"
-rm "${OUT_PREFIX}.sam"
+rm "${OUT_PREFIX}.sam" "${OUT_PREFIX}.bam"
 
 # -------------------------------
 # Compute alignment stats
 # -------------------------------
-TOTAL_READS=$(grep "reads; of these:" "${OUT_PREFIX}_bowtie2.log" | head -n1 | awk '{print $1}')
-ALIGNED_READS=$(grep "aligned exactly 1 time" "${OUT_PREFIX}_bowtie2.log" | awk '{sum += $1} END {print sum}')
-PERCENT_ALIGNED=$(awk -v a="$ALIGNED_READS" -v t="$TOTAL_READS" 'BEGIN{if(t>0) print (a/t)*100; else print 0}')
+# TOTAL_READS=$(grep "reads; of these:" "${OUT_PREFIX}_bowtie2.log" | head -n1 | awk '{print $1}')
+# ALIGNED_READS=$(grep "aligned exactly 1 time" "${OUT_PREFIX}_bowtie2.log" | awk '{sum += $1} END {print sum}')
+# PERCENT_ALIGNED=$(awk -v a="$ALIGNED_READS" -v t="$TOTAL_READS" 'BEGIN{if(t>0) print (a/t)*100; else print 0}')
+
+# ALIGN_STATS="$SAMPLE_OUT/mycoplasma_alignment_stats.tsv"
+# echo -e "Sample\tTotal_Reads\tPercent_Aligned" > "$ALIGN_STATS"
+# echo -e "${SAMPLE}\t${TOTAL_READS}\t${PERCENT_ALIGNED}" >> "$ALIGN_STATS"
+
+FLAGSTAT_OUT="$SAMPLE_OUT/${SAMPLE}_flagstat.txt"
+samtools flagstat "${OUT_PREFIX}_sorted.bam" > "$FLAGSTAT_OUT"
+
+# parse:
+# e.g. "53041911 + 0 in total (QC-passed reads + QC-failed reads)"
+# and "   123 + 0 mapped (0.00% : N/A)"
+TOTAL_READS=$(awk '/in total/ {print $1; exit}' "$FLAGSTAT_OUT")
+MAPPED_READS=$(awk '/mapped \(/ {print $1; exit}' "$FLAGSTAT_OUT")
+
+# fallback to zero if parsing failed
+TOTAL_READS=${TOTAL_READS:-0}
+MAPPED_READS=${MAPPED_READS:-0}
+
+PERCENT_ALIGNED=$(awk -v a="$MAPPED_READS" -v t="$TOTAL_READS" \
+  'BEGIN{if(t>0) printf("%.6f", (a/t)*100); else print "0"}')
 
 ALIGN_STATS="$SAMPLE_OUT/mycoplasma_alignment_stats.tsv"
-echo -e "Sample\tTotal_Reads\tPercent_Aligned" > "$ALIGN_STATS"
-echo -e "${SAMPLE}\t${TOTAL_READS}\t${PERCENT_ALIGNED}" >> "$ALIGN_STATS"
+echo -e "Sample\tTotal_Reads\tMapped_Reads\tPercent_Aligned" > "$ALIGN_STATS"
+echo -e "${SAMPLE}\t${TOTAL_READS}\t${MAPPED_READS}\t${PERCENT_ALIGNED}" >> "$ALIGN_STATS"
 
 # -------------------------------
 # R plotting
@@ -97,29 +118,30 @@ export ALIGN_STATS
 Rscript --vanilla - <<'EOF'
 library(ggplot2)
 library(readr)
-library(dplyr)
+#library(dplyr)
 
 ALIGN_STATS <- Sys.getenv("ALIGN_STATS")
-align_stats <- read_tsv(ALIGN_STATS)
+align_stats <- read_tsv(ALIGN_STATS, show_col_types=FALSE)
 
-p1 <- ggplot(align_stats, aes(x = reorder(Sample, Percent_Aligned), y = Percent_Aligned)) +
-  geom_bar(stat = "identity", fill = "steelblue") +
-  coord_flip() +
-  labs(title = "Mycoplasma Contamination per Sample",
-       x = "Sample", y = "Percent of Reads Aligned") +
-  theme_minimal(base_size = 14)
+percent <- as.numeric(align_stats$Percent_Aligned[1])
+sample_name <- align_stats$Sample[1]
 
-p2 <- ggplot(align_stats, aes(x = Total_Reads, y = Percent_Aligned)) +
-  geom_point(color = "firebrick", size = 3) +
-  geom_smooth(method = "lm", se = FALSE, color = "black") +
-  labs(title = "Correlation: Total Reads vs % Aligned",
-       x = "Total Reads", y = "Percent Aligned") +
-  theme_minimal(base_size = 14)
+df <- data.frame(x = seq(0, 100, length.out = 500), y = 1)
 
-pdf(file = file.path(dirname(ALIGN_STATS), "mycoplasma_alignment_summary.pdf"), width = 10, height = 7)
-print(p1)
-print(p2)
-dev.off()
+p <- ggplot(df, aes(x = x, y = y)) +
+  geom_tile(aes(x = x, y = y, fill = x), height = 0.6) +
+  scale_fill_gradient(low = "skyblue", high = "red", guide = "none") +
+  geom_point(aes(x = percent, y = 1.3), shape = 18, size = 5) +
+  annotate("text", x = percent, y = 1.5, label = sprintf("%.4f%%", percent), vjust = 0) +
+  labs(title = paste0("Mycoplasma alignment — ", sample_name)) +
+  theme_void(base_size = 14) +
+  theme(plot.title = element_text(hjust = 0.5))
+
+out_pdf <- file.path(dirname(ALIGN_STATS), "mycoplasma_alignment_summary.pdf")
+out_png <- file.path(dirname(ALIGN_STATS), "mycoplasma_alignment_summary.png")
+
+ggsave(out_pdf, p, width = 7, height = 2.5)
+ggsave(out_png, p, width = 7, height = 2.5)
 EOF
 
 echo "[INFO] Mycoplasma detection complete for $SAMPLE"
