@@ -50,7 +50,7 @@ Edit_dbSNP_Files(
 # -----------------------------
 # Edit VCF & generate variant table
 # -----------------------------
-vcf_file <- file.path(output_dir, "variant_calling", paste0(sample, ".variant_filtered.vcf.gz"))
+vcf_file <- file.path(opt$output_dir, "variant_calling", paste0(sample, ".variant_filtered.vcf.gz"))
 if (!file.exists(vcf_file)) stop(paste("VCF file not found:", vcf_file))
 
 readData <- read.delim(vcf_file, as.is = TRUE)
