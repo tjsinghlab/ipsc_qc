@@ -118,33 +118,40 @@ export ALIGN_STATS
 Rscript --vanilla - <<'EOF'
 library(ggplot2)
 library(readr)
-#library(dplyr)
 
+# Read alignment stats
 ALIGN_STATS <- Sys.getenv("ALIGN_STATS")
-align_stats <- read_tsv(ALIGN_STATS, show_col_types=FALSE)
+align_stats <- read_tsv(ALIGN_STATS, show_col_types = FALSE)
 
 percent <- as.numeric(align_stats$Percent_Aligned[1])
 sample_name <- align_stats$Sample[1]
+species_name <- align_stats$Species[1]
 
-df <- data.frame(x = seq(0, 100, length.out = 500), y = 1)
+# Gradient bar data
+df <- data.frame(x = seq(0, 100, length.out = 500), y = 0)
 
-p <- ggplot(df, aes(x = x, y = y)) +
-  geom_tile(aes(x = x, y = y, fill = x), height = 0.2) +
+p <- ggplot(df, aes(x, y)) +
+  # gradient bar
+  geom_tile(aes(fill = x), height = 0.2) +
   scale_fill_gradient(low = "skyblue", high = "red", guide = "none") +
-  geom_vline(xintercept = percent, color = "black", size = 1) +
-  annotate("segment", x = percent, xend=percent, y = 0.3, yend=0, arrow=arrow(length=unit(0.2,"cm")), color="black", linewidth=0.8)+
-  annotate("text", x=percent, y=0.8, label = sprintf("%.4f%%", percent), vjust = 0, size=5) +
-  labs(title = paste0("Mycoplasma alignment — ", sample_name),
-  x= "Percent Aligned to Mycoplasma Genome", y=NULL) +
+  
+  # short vertical line marker
+  geom_segment(aes(x = percent, xend = percent, y = 0, yend = 0.35),
+               color = "black", size = 1) +
+  
+  # percent label above the line
+  annotate("text", x = percent, y = 0.5,
+           label = sprintf("%.4f%%", percent),
+           hjust = 0.5, vjust = 0, size = 5) +
+  
+  labs(title = paste0(sample_name, " — ", species_name),
+       x = "Percent Aligned", y = NULL) +
   theme_void(base_size = 14) +
-  theme(axis.text.y = element_blank(),
-        axis.ticks.y = element_blank(),
-        panel.grid = element_blank(),
-        plot.title = element_text(hjust = 0.5))
+  theme(plot.title = element_text(hjust = 0.5))
 
+# Save PDF and PNG
 out_pdf <- file.path(dirname(ALIGN_STATS), "mycoplasma_alignment_summary.pdf")
 out_png <- file.path(dirname(ALIGN_STATS), "mycoplasma_alignment_summary.png")
-
 ggsave(out_pdf, p, width = 7, height = 2.5)
 ggsave(out_png, p, width = 7, height = 2.5)
 EOF
