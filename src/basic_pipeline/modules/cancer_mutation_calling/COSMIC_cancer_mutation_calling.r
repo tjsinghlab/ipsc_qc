@@ -27,7 +27,7 @@ ref_dir <- opt$ref_dir
 output_dir <- opt$output_dir
 cosmic_dir <- opt$cosmic_dir
 dir.create(file.path(output_dir, "cosmic_calling"), recursive = TRUE, showWarnings = FALSE)
-
+output_dir <- file.path(output_dir, "cosmic_calling")
 #extract COSMIC database
 untar(file.path(cosmic_dir,"Cosmic_CancerGeneCensus_Tsv_v101_GRCh38.tar"), exdir = cosmic_dir)
 
