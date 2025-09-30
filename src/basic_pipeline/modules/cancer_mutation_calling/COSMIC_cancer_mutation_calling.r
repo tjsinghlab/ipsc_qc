@@ -164,7 +164,7 @@ df_plot <- df_plot %>%
   group_by(GENE_SYMBOL, MUTATION_DESCRIPTION) %>%
   summarise(unique_pos_count = n_distinct(POS), .groups = "drop")
 
-ggplot(df_plot, aes(x = GENE_SYMBOL, y = unique_pos_count, fill = MUTATION_DESCRIPTION)) +
+plotty<-ggplot(df_plot, aes(x = GENE_SYMBOL, y = unique_pos_count, fill = MUTATION_DESCRIPTION)) +
   geom_bar(stat = "identity", position = "stack", width = 0.7) + 
   labs(
     x = "Gene Symbol", 
