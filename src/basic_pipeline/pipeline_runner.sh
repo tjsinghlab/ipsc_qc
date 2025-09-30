@@ -220,15 +220,12 @@ Rscript /pipeline/modules/outlier_detection/outlier_detection.R \
     > "$LOG_DIR/outliers_${sample}.log" 2>&1
 
 # Now loop again for per-sample downstream modules
+echo "[STEP] Running per-sample downstream analyses..."
 for sample in "${SAMPLES[@]}"; do
     sample_outdir="$OUTPUT_DIR/$sample"
+    echo "[INFO] Finding fastq files..."
     fq1="${FASTQ_DIR}/${sample}_R1_001.fastq.gz"
     fq2="${FASTQ_DIR}/${sample}_R2_001.fastq.gz"
-
-    echo "[STEP] eSNPKaryotyping for $sample..."
-    Rscript /pipeline/modules/eSNPKaryotyping/run_eSNPKaryotyping.R \
-        --ref_dir "$REF_DIR" --output_dir "$sample_outdir" --sample "$sample" \
-        > "$LOG_DIR/ekaryo_${sample}.log" 2>&1
 
     echo "[STEP] Mycoplasma detection for $sample..."
     bash /pipeline/modules/mycoplasma_detection/detect_mycoplasma.sh \
@@ -241,6 +238,11 @@ for sample in "${SAMPLES[@]}"; do
             --ref_dir "$REF_DIR" --cosmic_dir "$COSMIC_DIR" --output_dir "$sample_outdir" --sample "$sample" \
             > "$LOG_DIR/cancer_mutation_mapping_${sample}.log" 2>&1
     fi
+
+    echo "[STEP] eSNPKaryotyping for $sample..."
+    Rscript /pipeline/modules/eSNPKaryotyping/run_eSNPKaryotyping.R \
+        --ref_dir "$REF_DIR" --output_dir "$sample_outdir" --sample "$sample" \
+        > "$LOG_DIR/ekaryo_${sample}.log" 2>&1
 
     echo "[STEP] Generating HTML summary for $sample..."
     Rscript /pipeline/modules/report_builder/generate_html_summary.R \
