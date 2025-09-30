@@ -412,7 +412,9 @@ task HaplotypeCaller {
 		-I ${input_bam} \
 		-L ${interval_list} \
 		-O ${base_name}.vcf.gz \
-        -ERC GVCF 
+        -dont-use-soft-clipped-bases \
+		--standard-min-confidence-threshold-for-calling ${default=20 stand_call_conf} \
+		--dbsnp ${dbSNP_vcf}
 	>>>
 
 	output {
