@@ -190,7 +190,7 @@ ggsave(
   plot = plotty,
   device = "pdf",
   path = output_dir,
-  width=10,
+  width=16,
   height=8)
 
 write.csv(final_df, file.path(output_dir, paste0(sample_id, "_CancerMutations.tsv")), sep = "\t", row.names = FALSE)
