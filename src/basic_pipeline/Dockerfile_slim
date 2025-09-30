@@ -76,6 +76,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libfribidi-dev \
     pkg-config \
     git \
+    libmagick++-dev \
+    libmagickcore-dev \
+    libmagickwand-dev \
+    imagemagick \
  && rm -rf /var/lib/apt/lists/*
 
 
