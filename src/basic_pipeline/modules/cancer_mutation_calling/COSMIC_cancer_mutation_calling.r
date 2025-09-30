@@ -34,7 +34,7 @@ untar(file.path(cosmic_dir,"Cosmic_CancerGeneCensus_Tsv_v101_GRCh38.tar"), exdir
 Organism="Human"
 print("Reading VCF file...")
 #Directory  
-vcf_file = file.path(output_dir, "variant_calling", paste0(sample_id, sample_id, ".variant_filtered.vcf.gz"))
+vcf_file = file.path(output_dir, "variant_calling", paste0(sample_id, ".variant_filtered.vcf.gz"))
 
 readData = read.delim(vcf_file,as.is=T)
 readData=as.character(readData[-c(1:which(readData=="#CHROM")-1),1])
