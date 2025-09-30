@@ -132,7 +132,7 @@ p <- ggplot(df, aes(x = x, y = y)) +
   geom_tile(aes(x = x, y = y, fill = x), height = 0.2) +
   scale_fill_gradient(low = "skyblue", high = "red", guide = "none") +
   geom_vline(xintercept = percent, color = "black", size = 1) +
-  annotate("segment", x = percent, xend=percent, y = 0.3, arrow=arrow(length=unit(0.2,"cm")), color="black", size=0.8)+
+  annotate("segment", x = percent, xend=percent, y = 0.3, yend=0, arrow=arrow(length=unit(0.2,"cm")), color="black", linewidth=0.8)+
   annotate("text", x=percent, y=0.8, label = sprintf("%.4f%%", percent), vjust = 0, size=5) +
   labs(title = paste0("Mycoplasma alignment — ", sample_name),
   x= "Percent Aligned to Mycoplasma Genome", y=NULL) +
