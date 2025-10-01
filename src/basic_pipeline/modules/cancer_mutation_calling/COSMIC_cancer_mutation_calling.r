@@ -27,7 +27,7 @@ ref_dir <- opt$ref_dir
 output_dir <- opt$output_dir
 cosmic_dir <- opt$cosmic_dir
 dir.create(file.path(output_dir, "cosmic_calling"), recursive = TRUE, showWarnings = FALSE)
-output_dir <- file.path(output_dir, "cosmic_calling")
+
 #extract COSMIC database
 untar(file.path(cosmic_dir,"Cosmic_CancerGeneCensus_Tsv_v101_GRCh38.tar"), exdir = cosmic_dir)
 
@@ -35,7 +35,7 @@ Organism="Human"
 print("Reading VCF file...")
 #Directory  
 vcf_file = file.path(output_dir, "variant_calling", paste0(sample_id, ".variant_filtered.vcf.gz"))
-
+output_dir <- file.path(output_dir, "cosmic_calling")
 readData = read.delim(vcf_file,as.is=T)
 readData=as.character(readData[-c(1:which(readData=="#CHROM")-1),1])
 
