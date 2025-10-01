@@ -20,50 +20,48 @@ This pipeline expects a directory of fastq.gz (paired end: R1 and R2) files from
 #### Must be provided by user
 - `Cosmic_CancerGeneCensus_Tsv_v101_GRCh37.tar`  
   *Cosmic Database; MUST BE DOWNLOADED BY USER AND PROVIDED IN COSMIC_DIR ARGUMENT. If not, cancer mutation calling will not be performed.*
+- `chr/`  
+  *Directory with dbSNP build 142 common SNP files (GTF format), one per chromosome. Human: X = 23, Y = 24. Source: UCSC Table Browser, snp142common table.*
 ### Reference Files (place in `ref/` directory; default is ./ref)
-- `genes.txt`
+- `genes.txt`  
   *File containing a list of oncogenes for assessment. Lives in this repo; download into your /ref dir (the one you provide to the --ref_dir argument), and add whichever genes you want analyzed against COSMIC.*
 #### If not included in user-provided reference directory (ref_dir), the following files will be automatically downloaded to ref_dir:
 - `star_index_oh75`
-  *reference files for STAR; included in docker image*
+  *reference files for STAR*
 - `rsem_reference`
-  *reference files for RSEM; included in docker image*
+  *reference files for RSEM*
 - `gencode.v39.GRCh38.genes.collapsed_only.gtf`
-  *reference GTF; included in docker image*
+  *reference GTF*
 - `Homo_sapiens_assembly38_noALT_noHLA_noDecoy.fasta`
-  *refFasta; included in docker image*
+  *refFasta*
 - `Homo_sapiens_assembly38_noALT_noHLA_noDecoy.fasta.fai`
-  *refFastaIndex; included in docker image*
+  *refFastaIndex*
 - `Homo_sapiens_assembly38_noALT_noHLA_noDecoy.dict`
-  *refDict; included in docker image*
+  *refDict*
 - `Homo_sapiens_assembly38.dbsnp138.vcf`
-  *dbSnpVcf; included in docker image*
+  *dbSnpVcf*
 - `Homo_sapiens_assembly38.dbsnp138.vcf.idx` 
-  *dbSnpVcfIndex; included in docker image*
+  *dbSnpVcfIndex*
 - `Mills_and_1000G_gold_standard.indels.hg38.vcf.gz`
-  *knownVcf 1; included in docker image*
+  *knownVcf 1*
 - `Homo_sapiens_assembly38.known_indels.vcf.gz`
-  *knownVcf 2; included in docker image*
+  *knownVcf 2*
 - `Mills_and_1000G_gold_standard.indels.hg38.vcf.gz.tbi`
-  *knownVcfIndex 1; included in docker image*
+  *knownVcfIndex 1*
 - `Homo_sapiens_assembly38.known_indels.vcf.gz.tbi`
-  *knownVcfIndex 2; included in docker image*
+  *knownVcfIndex 2*
 - `gencode.v39.GRCh38.genes.collapsed_only.gtf`
-  *annotationsGTF; included in docker image*
+  *annotationsGTF*
 - `images/gatk_4.6.1.0.sif`
-  *gatk4_docker; included in docker image*
-- `genes.txt`  
-  *List of genes of interest (default: BRCA1, BRCA2, TP53, BCOR, EGFR); included in docker image*
+  *gatk4_docker image*
 - `GCF_000027325.1_ASM2732v1_genomic.fna.gz`  
-  *Mycoplasma genome; included in docker image but can also be downloaded with `wget https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/027/325/GCF_000027325.1_ASM2732v1/GCF_000027325.1_ASM2732v1_genomic.fna.gz`*
+  *Mycoplasma genome; downloaded from `wget https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/027/325/GCF_000027325.1_ASM2732v1/GCF_000027325.1_ASM2732v1_genomic.fna.gz`*
 - `Hs_expTrain_Jun-20-2017.rda`  
-  *PACNet training data; included in docker image but can also be downloaded with `aws s3 cp s3://cellnet-rnaseq/ref/cnproc/HS/Hs_expTrain_Jun-20-2017.rda . --no-sign-request`*
+  *PACNet training data; downloaded from `aws s3 cp s3://cellnet-rnaseq/ref/cnproc/HS/Hs_expTrain_Jun-20-2017.rda . --no-sign-request`*
 - `Hs_stTrain_Jun-20-2017.rda`  
-  *PACNet training data; included in docker image but can also be downloaded with `aws s3 cp s3://cellnet-rnaseq/ref/cnproc/HS/Hs_stTrain_Jun-20-2017.rda . --no-sign-request`*
-- `chr/`  
-  *Directory with dbSNP build 142 common SNP files (GTF format), one per chromosome. Human: X = 23, Y = 24. Source: UCSC Table Browser, snp142common table. Included in docker image.*
+  *PACNet training data; downloaded from `aws s3 cp s3://cellnet-rnaseq/ref/cnproc/HS/Hs_stTrain_Jun-20-2017.rda . --no-sign-request`*
 - `GCF_000001405.26/GCF_000001405.26_GRCh38_genomic.fna`  
-  *NCBI reference genome FASTA file; included in docker image, but can also be downloaded from `ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/001/405/GCF_000001405.26_GRCh38.p13`*
+  *NCBI reference genome FASTA file; downloaded from `ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/001/405/GCF_000001405.26_GRCh38.p13`*
 
 ### Tools
 The pipeline depends on the following command line tools:
@@ -71,34 +69,6 @@ The pipeline depends on the following command line tools:
 - `singularity`
 - `parallel`
 - `squashfuse`
-#### Command line tools included in Docker image:
-- `bowtie2`
-- `samtools`
-- `bcftools`
-- `vcftools`
-#### R packages included in the docker image:
-- `devtools`
-- `eSNPKaryotyping`
-- `zoo`
-- `gplots`
-- `patchwork`
-- `ggplot2`
-- `optparse`
-- `dplyr`
-- `data.table`
-- `tidyr`
-- `fuzzyjoin`
-- `stringr`
-- `biomaRt`
-- `purrr`
-- `CellNet` (tarball included in docker image)
-- `cancerCellNet`
-- `jsonlite`
-- `edgeR`
-#### Python packages included in the docker image:
-- `os`
-- `json`
-- `logzero` (logger)
 
 ## Inputs
 
@@ -133,41 +103,40 @@ File base names should be unique for each sample and consistent across file type
 
 ## Running the Pipeline
 
-Example command (replace all "my_***" directories with your actual directories)
-
 ```
 #Download docker image as singularity image (for HPC compatibility):
-singularity pull ipsc_image_slim_withmake.sif docker://kjakubiak16/ipsc_image_slim_withmake:latest
+
+singularity pull ipsc_qc.sif docker://kjakubiak16/ipsc_qc:latest
 
 #Run the singularity command. First bind the directories, then supply bound directories as arguments.
+
 singularity exec \
-  -B ./test_fastqs:/data \
-  -B ./ref:/ref \
-  -B ./COSMIC_DB:/cosmic \
-  -B ./my_outputs:/output \
-  ipsc_image_slim_withmake.sif \
+  -B ./path/to/fastqs:/data \
+  -B ./path/to/ref_dir:/ref \
+  -B ./path/to/COSMIC_DB:/cosmic \
+  -B ./path/to/output_dir:/output \
+  ipsc_qc.sif \
   /pipeline/pipeline_runner.sh \
-  --fastq_dir /data \
-  --output_dir /output \
-  --ref_dir /ref \
-  --cosmic_dir /cosmic
+    --fastq_dir /data \
+    --output_dir /output \
+    --ref_dir /ref \
+    --cosmic_dir /cosmic
 ```
 
-## Outputs
-Expected outputs include:
+## Output Directory Structure
 
-## Directory Structure
+
 
 ### Basic pipeline repo structure
 ```
-basic_pipeline
+src
+  ├── basic_pipeline
        ├── docker_image_structure
        ├── docker-compose.yaml
        ├── Dockerfile_slim
        ├── modules
        │   ├── cancer_mutation_calling
-       │   │   ├── cancer_mutation_mapping.R
-       │   │   └── filter_vcf_on_cosmic.sh
+       │   │   └── COSMIC_cancer_mutation_calling.r
        │   ├── eSNPKaryotyping
        │   │   └── run_eSNPKaryotyping.R
        │   ├── mycoplasma_detection
@@ -208,6 +177,8 @@ basic_pipeline
        │               └── wdlplayer.py
        ├── pipeline_runner.sh
        ├── README.md
+       ├── ref_files
+       │   └── genes.txt
        ├── report_builder.R
        └── tarballs
            └── CellNet_master.tar.gz
