@@ -186,9 +186,9 @@ plotty<-ggplot(df_plot, aes(x = GENE_SYMBOL, y = unique_pos_count, fill = MUTATI
 
 print("Saving results...")
 ggsave(
-  filename="CancerMutationPlot.pdf",
+  filename="CancerMutationPlot.png",
   plot = plotty,
-  device = "pdf",
+  device = "png",
   path = output_dir,
   width=16,
   height=8)
