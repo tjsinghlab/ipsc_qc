@@ -48,14 +48,6 @@ while [[ $# -gt 0 ]]; do
     shift
 done
 
-# ===========================================
-# Input check
-# ===========================================
-# if [[ -z "$FASTQ_DIR" || -z "$OUTPUT_DIR" || -z "$REF_DIR" ]]; then
-#     echo "[ERROR] --fastq_dir, --output_dir, and --ref_dir must be provided"
-#     usage
-# fi
-
 mkdir -p "$OUTPUT_DIR"
 LOG_DIR="$OUTPUT_DIR/logs"
 mkdir -p "$LOG_DIR"
@@ -82,8 +74,10 @@ resolve_ref() {
 # Define resources
 # ----------------------
 resources=(
-  "GENES_GTF|gencode.v39.GRCh38.genes.collapsed_only.gtf|wget -O $REF_DIR/gencode.v39.GRCh38.genes.collapsed_only.gtf https://storage.googleapis.com/gtex-resources/GENCODE/gencode.v39.GRCh38.genes.collapsed_only.gtf"
-  "ANNOTATION_GTF|gencode.v39.GRCh38.annotation.gtf|wget -O $REF_DIR/gencode.v39.GRCh38.annotation.gtf https://storage.googleapis.com/gtex-resources/GENCODE/gencode.v39.GRCh38.annotation.gtf"
+  "GENES_GTF|gencode.v39.GRCh38.genes.collapsed_only.gtf|wget -O - ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_39/gencode.v39.annotation.gtf.gz | gunzip -c > $REF_DIR/gencode.v39.GRCh38.genes.collapsed_only.gtf"
+
+  "ANNOTATION_GTF|gencode.v39.GRCh38.annotation.gtf|wget -O - https://ftp.ebi.ac.uk/.../gencode.v39.annotation.gtf.gz | gunzip -c > $REF_DIR/gencode.v39.GRCh38.annotation.gtf"
+
 
   "REF_FASTA|Homo_sapiens_assembly38_noALT_noHLA_noDecoy.fasta|wget -O $REF_DIR/Homo_sapiens_assembly38_noALT_noHLA_noDecoy.fasta https://storage.googleapis.com/gtex-resources/references/Homo_sapiens_assembly38_noALT_noHLA_noDecoy.fasta"
   "REF_FASTA_FAI|Homo_sapiens_assembly38_noALT_noHLA_noDecoy.fasta.fai|wget -O $REF_DIR/Homo_sapiens_assembly38_noALT_noHLA_noDecoy.fasta.fai https://storage.googleapis.com/gtex-resources/references/Homo_sapiens_assembly38_noALT_noHLA_noDecoy.fasta.fai"
@@ -107,7 +101,8 @@ resources=(
   "PACNET_EXP|Hs_expTrain_Jun-20-2017.rda|aws s3 cp s3://cellnet-rnaseq/ref/cnproc/HS/Hs_expTrain_Jun-20-2017.rda $REF_DIR/ --no-sign-request"
   "PACNET_ST|Hs_stTrain_Jun-20-2017.rda|aws s3 cp s3://cellnet-rnaseq/ref/cnproc/HS/Hs_stTrain_Jun-20-2017.rda $REF_DIR/ --no-sign-request"
 
-  "NCBI_FASTA|GCF_000001405.26_GRCh38_genomic.fna|wget -O $REF_DIR/GCF_000001405.26_GRCh38_genomic.fna ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/001/405/GCF_000001405.26_GRCh38.p13"
+  "NCBI_FASTA|GCF_000001405.26_GRCh38_genomic.fna|wget -O - ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/001/405/GCF_000001405.26_GRCh38.p13/GCF_000001405.26_GRCh38_genomic.fna.gz | gunzip -c > $REF_DIR/GCF_000001405.26_GRCh38_genomic.fna"
+
 )
 
 # ----------------------
@@ -250,11 +245,37 @@ for sample in "${SAMPLES[@]}"; do
         > "$LOG_DIR/ekaryo_${sample}.log" 2>&1
 
     echo "[STEP] Generating HTML summary for $sample..."
-    Rscript /pipeline/modules/report_builder/generate_html_summary.R \
+    Rscript /pipeline/report_builder.R \
         --output_dir "$OUTPUT_DIR" --project "$PROJECT" --sample "$sample" \
         > "$LOG_DIR/html_summary_${sample}.log" 2>&1
 
+
     echo "[DONE] Finished processing $sample"
+done
+
+echo "[STEP] Organizing output directories..."
+
+for sample in "${SAMPLES[@]}"; do
+    sample_outdir="$OUTPUT_DIR/$sample"
+
+    # Organize logs
+    mkdir -p "$sample_outdir/logs/log_caper"
+    mv "$sample_outdir"/caper* "$sample_outdir/logs/log_caper/" 2>/dev/null || true
+    for d in scripts current rnaseq_pipeline_fastq_workflow log; do
+        [ -d "$sample_outdir/$d" ] && mv "$sample_outdir/$d" "$sample_outdir/logs/"
+    done
+
+    # Organize preprocessing
+    mkdir -p "$sample_outdir/preprocessing"
+    for d in \
+        variant_calling/Mark_duplicates_outputs \
+        variant_calling/RSEM_outputs \
+        variant_calling/QC_outputs \
+        star_out \
+        fastqc_out \
+        variant_calling; do
+        [ -d "$sample_outdir/$d" ] && mv "$sample_outdir/$d" "$sample_outdir/preprocessing/"
+    done
 done
 
 echo "[INFO] Pipeline completed. Results in $OUTPUT_DIR"
