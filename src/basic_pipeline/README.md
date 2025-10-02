@@ -125,6 +125,89 @@ singularity exec \
 
 ## Output Directory Structure
 
+```
+output_dir
+  ├── logs
+  │    ├── ekaryo_sample_01.log
+  │    ├── ekaryo_sample_02.log
+  │    ├── cancer_mutation_mapping_sample_01.log
+  │    ├── cancer_mutation_mapping_sample_02.log
+  │    ├── html_summary_sample_01.log
+  │    ├── html_summary_sample_02.log
+  │    ├── pacnet_all.log
+  │    ├── outliers_sample_01.log
+  │    ├── outliers_sample_02.log
+  │    ├── sample_01_wdl2.log
+  │    ├── sample_02_wdl2.log
+  │    ├── sample_01_bulk_preprocess.log
+  │    └── sample_02_bulk_preprocess.log  
+  ├── pacnet
+  │    ├── PACNet_heatmap.png
+  │    ├── classifier.rda
+  │    ├── query_meta.csv
+  │    ├── query_matrix.csv
+  │    ├── metrics.json
+  │    ├── classification_validation_hm.png
+  │    └── classification_scores.csv
+  ├── outlier_analysis
+  ├── sample_01
+  │    ├── mycoplasma
+  │    │   ├── sample_01_flagstat.txt
+  │    │   ├── sample_01_sorted.bam.bai
+  │    │   ├── sample_01_sorted.bam
+  │    │   ├── sample_01_bowtie2.log
+  │    │   ├── mycoplasma_alignment_summary.png
+  │    │   ├── mycoplasma_alignment_summary.pdf
+  │    │   └── mycoplasma_alignment_stats.tsv
+  │    ├── eSNPKaryotyping
+  │    │   ├── sample_01_PlotGenome.png
+  │    │   └── sample_01_variantTable.csv
+  │    ├── cosmic_calling
+  │    │   ├── CancerMutationPlot.pdf
+  │    │   └── sample_01_CancerMutations.tsv
+  │    ├── variant_calling
+  │    │   ├── star_out
+  │    │   │   ├── sample_01.Aligned.toTranscriptome.out.bam
+  │    │   │   ├── sample_01.Aligned.out.bam
+  │    │   │   ├── sample_01.Aligned.sortedByCoord.out.bam
+  │    │   │   ├── sample_01.Aligned.sortedByCoord.out.bam.bai
+  │    │   │   ├── sample_01.ReadsPerGene.out.tab.gz
+  │    │   │   ├── sample_01.Chimeric.out.sorted.bam
+  │    │   │   └── sample_01.Chimeric.out.sorted.bam.bai
+  │    │   ├── RSEM_outputs
+  │    │   │   ├── sample_01.rsem.isoforms.results.gz
+  │    │   │   ├── sample_01.rsem.genes.results.gz
+  │    │   │   └── sample_01.rsem.stat  
+  │    │   ├── QC_outputs
+  │    │   │   ├── sample_01_R1.fastqc_data.txt.gz
+  │    │   │   ├── sample_01_R2.fastqc_data.txt.gz
+  │    │   │   ├── sample_01_R1_fastqc.zip
+  │    │   │   ├── sample_01_R2_fastqc.zip
+  │    │   │   ├── sample_01_R1_fastqc.html
+  │    │   │   └── sample_01_R2_fastqc.html
+  │    │   ├── fastqc_out
+  │    │   │   ├── sample_01_R1.fastqc_data.txt.gz
+  │    │   │   ├── sample_01_R2.fastqc_data.txt.gz
+  │    │   │   ├── sample_01_R1_fastqc.zip
+  │    │   │   ├── sample_01_R2_fastqc.zip
+  │    │   │   ├── sample_01_R1_fastqc.html
+  │    │   │   └── sample_01_R2_fastqc.html
+  │    │   └── Mark_duplicates_outputs
+  │    │   │   ├── sample_01.Aligned.sortedByCoord.out.md.bam.bai
+  │    │   │   ├── sample_01.marked_dup_metrics.txt
+  │    │   │   └── sample_01.Aligned.sortedByCoord.out.md.bam
+  │    ├── preprocessing
+  │    ├── logs
+  │    ├── variant_calling
+  │    │   ├── sample_01.variant_filtered.vcf.gz
+  │    │   ├── sample_01.variant_filtered.vcf.gz.tbi
+  │    │   ├── sample_01.aligned.duplicates_marked.recalibrated.bam
+  │    │   └── sample_01.aligned.duplicates_marked.recalibrated.bam.bai
+  └── sample_02
+  
+
+
+```
 
 
 ### Basic pipeline repo structure
