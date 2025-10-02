@@ -29,6 +29,11 @@ RUN apt-get update && \
     bowtie2 samtools bcftools vcftools default-jdk python3 python3-pip \
     && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
+RUN apt-get update && apt-get install -y \
+    imagemagick \
+    poppler-utils \
+ && rm -rf /var/lib/apt/lists/*
+
 # Now install Apptainer
 RUN wget https://github.com/apptainer/apptainer/releases/download/v1.1.9/apptainer_1.1.9_amd64.deb && \
     apt-get update && \
@@ -81,6 +86,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libmagickwand-dev \
     imagemagick \
  && rm -rf /var/lib/apt/lists/*
+
+ RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y \
+      libpoppler-cpp-dev \
+      libmagick++-dev \
+      ghostscript \
+      libssl-dev \
+      libcurl4-openssl-dev \
+      libxml2-dev && \
+    rm -rf /var/lib/apt/lists/*
 
 
 # ----------------------

@@ -1,6 +1,5 @@
 #!/usr/bin/env Rscript
 
-library(magick)
 library(pdftools)
 
 # Set directories
@@ -9,7 +8,7 @@ summary_pdf <- file.path(output_dir, "Analysis_Summary.pdf")
 
 # Create an empty list to store PDF pages
 pdf_pages <- list()
-
+library(magick)
 # ----------------------------
 # First page: date/time
 # ----------------------------
