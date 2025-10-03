@@ -113,19 +113,20 @@ plots <- lapply(1:nrow(align_stats), function(i){
   sample_name <- align_stats$Sample[i]
 
   p <- ggplot(df, aes(x, y)) +
-    geom_tile(aes(fill = x), height = 0.2) +
+    geom_tile(aes(fill = x), height = 0.05) +
     scale_fill_gradient(low = "skyblue", high = "red", guide = "none") +
-    geom_segment(aes(x = percent, xend = percent, y = 0, yend = 0.35),
+    geom_segment(aes(x = percent, xend = percent, y = -0.025, yend = 0.025),
                  color = "black", size = 1) +
-    annotate("text", x = percent, y = 0.5,
+    annotate("text", x = percent, y = 0.1,
              label = sprintf("%.4f%%", percent),
-             hjust = 0.5, vjust = 0, size = 5) +
-    labs(title = paste0(sample_name, " — ", species_name),
+             hjust = 0.2, vjust = 12, size = 6) +
+    labs(title = paste0(species_name),
          x = "Percent Aligned", y = NULL) +
-    theme_void(base_size = 14) +
-    theme(plot.title = element_text(hjust = 0.5))
+    theme_void(base_size = 10) +
+    theme(plot.title = element_text(hjust = 0.5, vjust=-25,size = 20))
   return(p)
-})
+
+
 
 library(patchwork)
 final_plot <- wrap_plots(plots, ncol = 1)
