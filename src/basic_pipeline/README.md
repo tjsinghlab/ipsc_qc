@@ -3,6 +3,8 @@
 This pipeline will first process raw fastq files (bulk RNA sequencing) using fastqc, STAR alignment, and RSEM. GATK germline variant calling will be performed, in addition to several QC metrics, including cancer mutation calling (in select oncogenes), eSNPKaryotyping, mycoplasma detection, PACNet classification, and outlier assessment.
 This pipeline expects a directory of fastq.gz (paired end: R1 and R2) files from a bulk RNA sequencing run.
 
+See wiki for more details.
+
 ---
 
 ## Table of Contents
@@ -20,23 +22,19 @@ This pipeline expects a directory of fastq.gz (paired end: R1 and R2) files from
 #### Must be provided by user
 - `Cosmic_CancerGeneCensus_Tsv_v101_GRCh37.tar`  
   *Cosmic Database; MUST BE DOWNLOADED BY USER AND PROVIDED IN COSMIC_DIR ARGUMENT. If not, cancer mutation calling will not be performed.*
-- `chr/`  
-  *Directory with dbSNP build 142 common SNP files (GTF format), one per chromosome. Human: X = 23, Y = 24. Source: UCSC Table Browser, snp142common table.*
+
 ### Reference Files (place in `ref/` directory; default is ./ref)
-- `genes.txt`  
+- `chr/`
+  *Directory with dbSNP build 142 common SNP files (GTF format), one per chromosome. Human: X = 23, Y = 24. Source: UCSC Table Browser, snp142common table.*
+- `genes.txt`
   *File containing a list of oncogenes for assessment. Lives in this repo; download into your /ref dir (the one you provide to the --ref_dir argument), and add whichever genes you want analyzed against COSMIC.*
+- GTEX and RSEM References (`Homo_sapiens_assembly38_noALT_noHLA_noDecoy.fasta`, `Homo_sapiens_assembly38_noALT_noHLA_noDecoy.fasta.fai`, `Homo_sapiens_assembly38_noALT_noHLA_noDecoy.dict`, `gencode.v39.GRCh38.genes.collapsed_only`        
+  *(requester pays enabled; cannot be universally downloaded within pipeline))*
+
 #### If not included in user-provided reference directory (ref_dir), the following files will be automatically downloaded to ref_dir:
 - `star_index_oh75`
   *reference files for STAR*
 - `rsem_reference`
-  *reference files for RSEM*
-- `gencode.v39.GRCh38.genes.collapsed_only.gtf`
-  *reference GTF*
-- `Homo_sapiens_assembly38_noALT_noHLA_noDecoy.fasta`
-  *refFasta*
-- `Homo_sapiens_assembly38_noALT_noHLA_noDecoy.fasta.fai`
-  *refFastaIndex*
-- `Homo_sapiens_assembly38_noALT_noHLA_noDecoy.dict`
   *refDict*
 - `Homo_sapiens_assembly38.dbsnp138.vcf`
   *dbSnpVcf*
