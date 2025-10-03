@@ -52,8 +52,10 @@ See wiki for more details.
   *annotationsGTF*
 - `images/gatk_4.6.1.0.sif`
   *gatk4_docker image*
-- `GCF_000027325.1_ASM2732v1_genomic.fna.gz`  
-  *Mycoplasma genome; downloaded from `wget https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/027/325/GCF_000027325.1_ASM2732v1/GCF_000027325.1_ASM2732v1_genomic.fna.gz`*
+- `GCF_000420105.1_ASM42010v1_genomic.fna.gz`  
+  *Mycoplasma orale genome; downloaded from `wget https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/420/105/GCF_000420105.1_ASM42010v1/GCF_000420105.1_ASM42010v1_genomic.fna.gz`*
+- `GCF_003704055.1_ASM370405v1_genomic.fna.gz`
+  *Mycoplasma fermentans genome; downloaded from `wget https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/003/704/055/GCF_003704055.1_ASM370405v1/GCF_003704055.1_ASM370405v1_genomic.fna.gz`*
 - `Hs_expTrain_Jun-20-2017.rda`  
   *PACNet training data; downloaded from `aws s3 cp s3://cellnet-rnaseq/ref/cnproc/HS/Hs_expTrain_Jun-20-2017.rda . --no-sign-request`*
 - `Hs_stTrain_Jun-20-2017.rda`  
