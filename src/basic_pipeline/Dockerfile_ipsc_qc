@@ -21,6 +21,9 @@ RUN apt-get update && \
     libfontconfig1-dev libfreetype6-dev libpng-dev libjpeg-dev libtiff5-dev \
     libcairo2-dev libharfbuzz-dev libfribidi-dev \
     libmagick++-dev libmagickcore-dev libmagickwand-dev libpoppler-cpp-dev \
+    curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "/tmp/awscliv2.zip" && \
+    unzip /tmp/awscliv2.zip -d /tmp && \
+    /tmp/aws/install && \
  && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # ----------------------
