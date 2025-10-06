@@ -98,7 +98,7 @@ resources=(
   "GENE_LIST|genes.txt|wget -O $REF_DIR/genes.txt https://raw.githubusercontent.com/tjsinghlab/ipsc_qc/main/src/basic_pipeline/ref_files/genes.txt"
 
   "MYCO_ORALE_REF|GCF_000420105.1_ASM42010v1_genomic.fna.gz|wget -O $REF_DIR/GCF_000420105.1_ASM42010v1_genomic.fna.gz https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/420/105/GCF_000420105.1_ASM42010v1/GCF_000420105.1_ASM42010v1_genomic.fna.gz"
-  "MYCO_FERMENTANS_REF|GCF_003704055.1_ASM370405v1_genomic.fna.gz|wget -0 $REF_DIR/GCF_003704055.1_ASM370405v1_genomic.fna.gz https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/003/704/055/GCF_003704055.1_ASM370405v1/GCF_003704055.1_ASM370405v1_genomic.fna.gz"
+  "MYCO_FERMENTANS_REF|GCF_003704055.1_ASM370405v1_genomic.fna.gz|wget -O $REF_DIR/GCF_003704055.1_ASM370405v1_genomic.fna.gz https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/003/704/055/GCF_003704055.1_ASM370405v1/GCF_003704055.1_ASM370405v1_genomic.fna.gz"
 
   "PACNET_EXP|Hs_expTrain_Jun-20-2017.rda|aws s3 cp s3://cellnet-rnaseq/ref/cnproc/HS/Hs_expTrain_Jun-20-2017.rda $REF_DIR/ --no-sign-request"
   "PACNET_ST|Hs_stTrain_Jun-20-2017.rda|aws s3 cp s3://cellnet-rnaseq/ref/cnproc/HS/Hs_stTrain_Jun-20-2017.rda $REF_DIR/ --no-sign-request"
@@ -246,14 +246,13 @@ for sample in "${SAMPLES[@]}"; do
         --ref_dir "$REF_DIR" --output_dir "$sample_outdir" --sample "$sample" \
         > "$LOG_DIR/ekaryo_${sample}.log" 2>&1
 
-    echo "[STEP] Generating HTML summary for $sample..."
-    Rscript /pipeline/report_builder.R \
-        --output_dir "$OUTPUT_DIR" --project "$PROJECT" --sample "$sample" \
-        > "$LOG_DIR/html_summary_${sample}.log" 2>&1
-
-
     echo "[DONE] Finished processing $sample"
 done
+
+echo "[STEP] Generating summary PDF..."
+Rscript /pipeline/report_builder.R \
+    --output_dir "$OUTPUT_DIR" --project "$PROJECT" \
+    > "$LOG_DIR/project_summary.log" 2>&1
 
 echo "[STEP] Organizing output directories..."
 
@@ -267,17 +266,17 @@ for sample in "${SAMPLES[@]}"; do
         [ -d "$sample_outdir/$d" ] && mv "$sample_outdir/$d" "$sample_outdir/logs/"
     done
 
-    # Organize preprocessing
-    mkdir -p "$sample_outdir/preprocessing"
-    for d in \
-        variant_calling/Mark_duplicates_outputs \
-        variant_calling/RSEM_outputs \
-        variant_calling/QC_outputs \
-        star_out \
-        fastqc_out \
-        variant_calling; do
-        [ -d "$sample_outdir/$d" ] && mv "$sample_outdir/$d" "$sample_outdir/preprocessing/"
-    done
+    # # Organize preprocessing
+    # mkdir -p "$sample_outdir/preprocessing"
+    # for d in \
+    #     variant_calling/Mark_duplicates_outputs \
+    #     variant_calling/RSEM_outputs \
+    #     variant_calling/QC_outputs \
+    #     star_out \
+    #     fastqc_out \
+    #     variant_calling; do
+    #     [ -d "$sample_outdir/$d" ] && mv "$sample_outdir/$d" "$sample_outdir/preprocessing/"
+    # done
 done
 
 echo "[INFO] Pipeline completed. Results in $OUTPUT_DIR"
