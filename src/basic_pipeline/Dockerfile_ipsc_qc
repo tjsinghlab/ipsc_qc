@@ -47,13 +47,17 @@ ENV CRAN_REPO=https://packagemanager.posit.co/cran/2024-01-01
 RUN R -e "install.packages(c( \
         'devtools','zoo','gplots','patchwork','ggplot2','optparse','dplyr', \
         'data.table','readr','tidyr','fuzzyjoin','pdftools','stringr','magick','purrr','jsonlite', \
-        'rmarkdown','knitr','igraph','reshape2','R.utils'), repos='${CRAN_REPO}')"
+        'rmarkdown','knitr','igraph','reshape2','R.utils','png','RCurl','DBI','RSQLite','XML'), repos='${CRAN_REPO}')"
 
 # ----------------------
 # Install Bioconductor packages
 # ----------------------
-RUN R -e "if (!requireNamespace('BiocManager', quietly=TRUE)) install.packages('BiocManager', repos='${CRAN_REPO}'); \
-          BiocManager::install(c('biomaRt','edgeR'), ask=FALSE, update=FALSE)"
+RUN R -e " \
+    if (!requireNamespace('BiocManager', quietly=TRUE)) install.packages('BiocManager', repos='${CRAN_REPO}'); \
+    BiocManager::install(version='3.18', ask=FALSE, update=FALSE); \
+    options(BioC_mirror='https://bioconductor.org'); \
+    BiocManager::install(c('BiocFileCache','limma','GenomeInfoDb','Biostrings','KEGGREST','AnnotationDbi', 'biomaRt','edgeR'), ask=FALSE, update=FALSE) \
+"
 
 # ----------------------
 # Install CellNet from GitHub
