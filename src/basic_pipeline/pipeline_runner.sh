@@ -249,10 +249,10 @@ for sample in "${SAMPLES[@]}"; do
     echo "[DONE] Finished processing $sample"
 done
 
-echo "[STEP] Generating summary PDF..."
-Rscript /pipeline/report_builder.R \
-    --output_dir "$OUTPUT_DIR" --project "$PROJECT" \
-    > "$LOG_DIR/project_summary.log" 2>&1
+# echo "[STEP] Generating summary PDF..."
+# Rscript /pipeline/report_builder.R \
+#     --output_dir "$OUTPUT_DIR" --project "$PROJECT" \
+#     > "$LOG_DIR/project_summary.log" 2>&1
 
 echo "[STEP] Organizing output directories..."
 
@@ -261,10 +261,25 @@ for sample in "${SAMPLES[@]}"; do
 
     # Organize logs
     mkdir -p "$sample_outdir/logs/log_caper"
-    mv "$sample_outdir"/caper* "$sample_outdir/logs/log_caper/" 2>/dev/null || true
-    for d in scripts current rnaseq_pipeline_fastq_workflow log; do
-        [ -d "$sample_outdir/$d" ] && mv "$sample_outdir/$d" "$sample_outdir/logs/"
-    done
+    mv -f "$sample_outdir"/caper* "$sample_outdir/logs/log_caper/" 2>/dev/null || true
+for d in scripts current rnaseq_pipeline_fastq_workflow log; do
+    src="$sample_outdir/$d"
+    dest="$sample_outdir/logs/$d"
+    if [ -d "$src" ]; then
+        rm -rf "$dest"
+        mv "$src" "$sample_outdir/logs/"
+    fi
+done
+
+    
+    mkdir -p "$OUTPUT_DIR/plots/cancer_mutations/$sample"
+    cp "$sample_outdir/cosmic_calling/CancerMutationPlot.png" "$OUTPUT_DIR/plots/cancer_mutations/$sample/"
+
+    mkdir -p "$OUTPUT_DIR/plots/eSNPKaryotyping/$sample"
+    cp "$sample_outdir/eSNPKaryotyping/${sample}_PlotGenome.png" "$OUTPUT_DIR/plots/eSNPKaryotyping/$sample/"
+
+    mkdir -p "$OUTPUT_DIR/plots/mycoplasma_detection/$sample"
+    cp "$sample_outdir/mycoplasma/mycoplasma_alignment_summary.pdf" "$OUTPUT_DIR/plots/mycoplasma_detection/$sample/"
 
     # # Organize preprocessing
     # mkdir -p "$sample_outdir/preprocessing"
@@ -278,5 +293,10 @@ for sample in "${SAMPLES[@]}"; do
     #     [ -d "$sample_outdir/$d" ] && mv "$sample_outdir/$d" "$sample_outdir/preprocessing/"
     # done
 done
+
+mkdir -p "$OUTPUT_DIR/plots/PACNet"
+cp "$OUTPUT_DIR/pacnet/PACNet_heatmap.png" "$OUTPUT_DIR/plots/PACNet/"
+    
+mkdir -p "$OUTPUT_DIR/plots/outlier_analysis"
 
 echo "[INFO] Pipeline completed. Results in $OUTPUT_DIR"
