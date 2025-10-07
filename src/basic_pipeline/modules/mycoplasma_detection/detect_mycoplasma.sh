@@ -100,6 +100,7 @@ Rscript --vanilla - <<'EOF'
 library(ggplot2)
 library(readr)
 library(dplyr)
+library(patchwork)
 
 ALIGN_STATS_FILE <- Sys.getenv("ALIGN_STATS_FILE")
 align_stats <- read_tsv(ALIGN_STATS_FILE, show_col_types = FALSE)
@@ -107,34 +108,49 @@ align_stats <- read_tsv(ALIGN_STATS_FILE, show_col_types = FALSE)
 # Gradient bar data
 df <- data.frame(x = seq(0, 100, length.out = 500), y = 0)
 
-plots <- lapply(1:nrow(align_stats), function(i){
+plots <- lapply(1:nrow(align_stats), function(i) {
   species_name <- align_stats$Species[i]
   percent <- as.numeric(align_stats$Percent_Aligned[i])
   sample_name <- align_stats$Sample[i]
 
   p <- ggplot(df, aes(x, y)) +
+    # Gradient block
     geom_tile(aes(fill = x), height = 0.05) +
     scale_fill_gradient(low = "skyblue", high = "red", guide = "none") +
+    # Marker line (exactly matching the height of the gradient bar)
     geom_segment(aes(x = percent, xend = percent, y = -0.025, yend = 0.025),
                  color = "black", size = 1) +
-    annotate("text", x = percent, y = 0.1,
-             label = sprintf("%.4f%%", percent),
-             hjust = 0.2, vjust = 12, size = 6) +
-    labs(title = paste0(species_name),
+    # Percentage text (moved down a little, smaller font)
+    annotate("text", x = percent, y = 0.08,
+             label = sprintf("%.2f%%", percent),
+             hjust = 0.5, vjust = 0, size = 3.5) +
+    # Shorter, readable title
+    labs(title = paste0(sample_name, " ", species_name),
          x = "Percent Aligned", y = NULL) +
     theme_void(base_size = 10) +
-    theme(plot.title = element_text(hjust = 0.5, vjust=-25,size = 20))
+    theme(
+      plot.title = element_text(
+        hjust = 0.5,
+        vjust = 0,
+        size = 14,     # smaller than before (20 → 14)
+        face = "bold"
+      ),
+      plot.margin = margin(10, 10, 10, 10)
+    )
+
   return(p)
+})
 
-
-
-library(patchwork)
+# Combine plots
 final_plot <- wrap_plots(plots, ncol = 1)
 
+# Save outputs
 out_pdf <- file.path(dirname(ALIGN_STATS_FILE), "mycoplasma_alignment_summary.pdf")
 out_png <- file.path(dirname(ALIGN_STATS_FILE), "mycoplasma_alignment_summary.png")
+
 ggsave(out_pdf, final_plot, width = 7, height = 2.5 * length(plots))
 ggsave(out_png, final_plot, width = 7, height = 2.5 * length(plots))
+
 EOF
 
 echo "[INFO] Mycoplasma detection complete for $SAMPLE"
