@@ -121,7 +121,7 @@ plots <- lapply(1:nrow(align_stats), function(i) {
     geom_segment(aes(x = percent, xend = percent, y = -0.025, yend = 0.025),
                  color = "black", size = 1) +
     # Percentage text (moved down a little, smaller font)
-    annotate("text", x = percent, y = 0.08,
+    annotate("text", x = percent, y = 0.04,
              label = sprintf("%.2f%%", percent),
              hjust = 0.5, vjust = 0, size = 3.5) +
     # Shorter, readable title

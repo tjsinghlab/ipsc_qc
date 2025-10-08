@@ -164,33 +164,76 @@ df_plot <- df_plot %>%
   group_by(GENE_SYMBOL, MUTATION_DESCRIPTION) %>%
   summarise(unique_pos_count = n_distinct(POS), .groups = "drop")
 
-plotty<-ggplot(df_plot, aes(x = GENE_SYMBOL, y = unique_pos_count, fill = MUTATION_DESCRIPTION)) +
-  geom_bar(stat = "identity", position = "stack", width = 0.7) + 
+plotty <- ggplot(df_plot, aes(
+  x = GENE_SYMBOL,
+  y = unique_pos_count,
+  fill = MUTATION_DESCRIPTION
+)) +
+  geom_bar(stat = "identity", position = "stack", width = 0.5, color = "white", linewidth = 0.2) + 
   labs(
-    x = "Gene Symbol", 
-    y = "Unique Position Count", 
+    x = "Gene Symbol",
+    y = "Unique Position Count",
     fill = "Mutation Type",
     title = "SNP Hits in Cancer Mutation Database Metrics",
     subtitle = "Cosmic_MutantCensus_Tsv_v101_GRCh38"
   ) +
-  theme_minimal(base_size = 14) + 
+  # Professional palette: subtle, balanced tones
+  scale_fill_brewer(palette = "Set2") +
+  
+  theme_minimal(base_size = 14) +
   theme(
-    axis.text.x = element_text(angle = 45, hjust = 1), 
-    axis.title = element_text(face = "bold"), 
-    axis.text = element_text(size = 10), 
-    legend.title = element_text(size = 12, face = "bold"), 
-    legend.text = element_text(size = 10), 
-    plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
-    plot.subtitle = element_text(hjust = 0.5, size = 14, face = "italic")
-  ) 
+    axis.text.x = element_text(
+      angle = 45,
+      hjust = 1,
+      size = 12,
+      face = "plain",
+      color = "gray20"
+    ),
+    axis.text.y = element_text(
+      size = 12,
+      face = "plain",
+      color = "gray20"
+    ),
+    axis.title = element_text(
+      face = "bold",
+      size = 14
+    ),
+    legend.title = element_text(
+      size = 13,
+      face = "bold",
+      color = "gray10"
+    ),
+    legend.text = element_text(
+      size = 12,
+      color = "gray25"
+    ),
+    plot.title = element_text(
+      hjust = 0.5,
+      size = 18,
+      face = "bold",
+      color = "gray10"
+    ),
+    plot.subtitle = element_text(
+      hjust = 0.5,
+      size = 14,
+      face = "italic",
+      color = "gray35"
+    ),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.grid.major.y = element_line(color = "gray90", linewidth = 0.3)
+  )
 
-print("Saving results...")
+# Save it like a masterpiece
 ggsave(
-  filename="CancerMutationPlot.png",
+  filename = "CancerMutationPlot.png",
   plot = plotty,
   device = "png",
   path = output_dir,
-  width=16,
-  height=8)
+  width = 14,
+  height = 7,
+  dpi = 300
+)
+
 
 write.csv(final_df, file.path(output_dir, paste0(sample_id, "_CancerMutations.tsv")), sep = "\t", row.names = FALSE)
