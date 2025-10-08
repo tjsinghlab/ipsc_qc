@@ -161,23 +161,65 @@ echo "[INFO] Found ${#SAMPLES[@]} samples: ${SAMPLES[*]}"
 # ===========================================
 # Phase 1: Run WDL pipelines for all samples
 # ===========================================
-for sample in "${SAMPLES[@]}"; do
-    echo "[INFO] Running WDLs for sample: $sample"
-    sample_outdir="$OUTPUT_DIR/$sample"
+# for sample in "${SAMPLES[@]}"; do
+#     echo "[INFO] Running WDLs for sample: $sample"
+#     sample_outdir="$OUTPUT_DIR/$sample"
+#     mkdir -p "$sample_outdir"
+
+#     fq1="${FASTQ_DIR}/${sample}_R1_001.fastq.gz"
+#     fq2="${FASTQ_DIR}/${sample}_R2_001.fastq.gz"
+
+#     bam_file="$sample_outdir/Mark_duplicates_outputs/${sample}.Aligned.sortedByCoord.out.md.bam"
+
+#     bai_file="${bam_file}.bai"
+#     rsem_file="$sample_outdir/RSEM_outputs/${sample}.rsem.genes.results.gz"
+
+#     echo "Looking for $bam_file and $rsem_file"
+#     # Step 1: Preprocessing
+#     if [ -f "$bam_file" ] && [ -f "$rsem_file" ]; then
+#         echo "[SKIP] $bam_file and $rsem_file already present. Skipping preprocessing for $sample"
+#     else
+#         echo "[RUN] Running preprocessing for $sample..."
+#         python3 "$PY_RUNNER1" \
+#             --fastq1 "$fq1" \
+#             --fastq2 "$fq2" \
+#             --output_dir "$sample_outdir" \
+#             --sample "$sample" \
+#             > "$LOG_DIR/${sample}_bulk_preprocess.log" 2>&1
+#     fi
+
+#     # Step 2: Variant Calling
+#     if [ -d "$sample_outdir/variant_calling" ] && \
+#     compgen -G "$sample_outdir/variant_calling/*.vcf.gz" > /dev/null; then
+#         echo "[SKIP] Variant calling outputs already present at $sample_outdir/variant_calling/. Skipping variant calling for $sample"
+#     else
+#         echo "[RUN] Running variant calling for $sample..."
+#         python3 "$PY_RUNNER2" \
+#             --output_dir "$sample_outdir" \
+#             --sample "$sample" \
+#             > "$LOG_DIR/${sample}_wdl2.log" 2>&1
+#     fi
+# done
+
+# ===========================================
+# Parallelized execution
+# ===========================================
+
+run_sample() {
+    local sample="$1"
+
+    echo "[INFO] Beginning processing for $sample"
+    local sample_outdir="$OUTPUT_DIR/$sample"
     mkdir -p "$sample_outdir"
 
-    fq1="${FASTQ_DIR}/${sample}_R1_001.fastq.gz"
-    fq2="${FASTQ_DIR}/${sample}_R2_001.fastq.gz"
+    local fq1="${FASTQ_DIR}/${sample}_R1_001.fastq.gz"
+    local fq2="${FASTQ_DIR}/${sample}_R2_001.fastq.gz"
+    local bam_file="$sample_outdir/Mark_duplicates_outputs/${sample}.Aligned.sortedByCoord.out.md.bam"
+    local rsem_file="$sample_outdir/RSEM_outputs/${sample}.rsem.genes.results.gz"
 
-    bam_file="$sample_outdir/Mark_duplicates_outputs/${sample}.Aligned.sortedByCoord.out.md.bam"
-
-    bai_file="${bam_file}.bai"
-    rsem_file="$sample_outdir/RSEM_outputs/${sample}.rsem.genes.results.gz"
-
-    echo "Looking for $bam_file and $rsem_file"
-    # Step 1: Preprocessing
+    # Step 1
     if [ -f "$bam_file" ] && [ -f "$rsem_file" ]; then
-        echo "[SKIP] $bam_file and $rsem_file already present. Skipping preprocessing for $sample"
+        echo "[SKIP] Preprocessing already complete for $sample"
     else
         echo "[RUN] Running preprocessing for $sample..."
         python3 "$PY_RUNNER1" \
@@ -188,10 +230,13 @@ for sample in "${SAMPLES[@]}"; do
             > "$LOG_DIR/${sample}_bulk_preprocess.log" 2>&1
     fi
 
-    # Step 2: Variant Calling
+    # Delete the broken 'data' symlink or variable if it exists
+    find . -xtype l -name data -delete
+
+    # Step 2
     if [ -d "$sample_outdir/variant_calling" ] && \
-    compgen -G "$sample_outdir/variant_calling/*.vcf.gz" > /dev/null; then
-        echo "[SKIP] Variant calling outputs already present at $sample_outdir/variant_calling/. Skipping variant calling for $sample"
+       compgen -G "$sample_outdir/variant_calling/*.vcf.gz" > /dev/null; then
+        echo "[SKIP] Variant calling already complete for $sample"
     else
         echo "[RUN] Running variant calling for $sample..."
         python3 "$PY_RUNNER2" \
@@ -199,21 +244,29 @@ for sample in "${SAMPLES[@]}"; do
             --sample "$sample" \
             > "$LOG_DIR/${sample}_wdl2.log" 2>&1
     fi
-done
+
+    echo "[DONE] Preprocessing and variant calling for sample $sample completed."
+}
+
+export -f run_sample
+export OUTPUT_DIR FASTQ_DIR LOG_DIR PY_RUNNER1 PY_RUNNER2 REF_DIR COSMIC_DIR
+
+MAX_JOBS=${MAX_JOBS:-$(nproc)}
+printf '%s\n' "${SAMPLES[@]}" | xargs -n1 -P "$MAX_JOBS" bash -c 'run_sample "$@"' _
+
 
 # ===========================================
 # Phase 2: Run PACNet + downstream scripts
 # ===========================================
-echo "[STEP] Running PACNet with all samples..."
+echo "[STEP] Running PACNet..."
 Rscript /pipeline/modules/PACNet/run_pacnet.R \
     --ref_dir "$REF_DIR" \
     --output_dir "$OUTPUT_DIR" \
     --project "$PROJECT" \
     > "$LOG_DIR/pacnet_all.log" 2>&1
 
-echo "[STEP] Outlier detection for all samples..."
+echo "[STEP] Outlier detection..."
 if [[ ${#SAMPLES[@]} -ge 4 ]]; then
-    echo "[STEP] Running outlier detection for all samples..."
     Rscript /pipeline/modules/outlier_detection/outlier_detection.R \
         --output_dir "$OUTPUT_DIR" --project "$PROJECT" \
         > "$LOG_DIR/outliers_all_samples.log" 2>&1
@@ -221,38 +274,99 @@ else
     echo "[SKIP] Outlier detection skipped: only ${#SAMPLES[@]} sample(s) found (minimum 4 required)."
 fi
 
-# Now loop again for per-sample downstream modules
-echo "[STEP] Running per-sample downstream analyses..."
-for sample in "${SAMPLES[@]}"; do
-    sample_outdir="$OUTPUT_DIR/$sample"
-    echo "[INFO] Finding fastq files..."
-    fq1="${FASTQ_DIR}/${sample}_R1_001.fastq.gz"
-    fq2="${FASTQ_DIR}/${sample}_R2_001.fastq.gz"
+# # Now loop again for per-sample downstream modules
+# echo "[STEP] Running per-sample downstream analyses..."
+# for sample in "${SAMPLES[@]}"; do
+#     sample_outdir="$OUTPUT_DIR/$sample"
+#     echo "[INFO] Finding fastq files..."
+#     fq1="${FASTQ_DIR}/${sample}_R1_001.fastq.gz"
+#     fq2="${FASTQ_DIR}/${sample}_R2_001.fastq.gz"
 
-    echo "[STEP] Mycoplasma detection for $sample..."
-    bash /pipeline/modules/mycoplasma_detection/detect_mycoplasma.sh \
-        --fastq1 "$fq1" --fastq2 "$fq2" --ref_dir "$REF_DIR" --output_dir "$sample_outdir" --sample "$sample" \
-        > "$LOG_DIR/mycoplasma_${sample}.log" 2>&1
+#     echo "[STEP] Mycoplasma detection for $sample..."
+#     bash /pipeline/modules/mycoplasma_detection/detect_mycoplasma.sh \
+#         --fastq1 "$fq1" --fastq2 "$fq2" --ref_dir "$REF_DIR" --output_dir "$sample_outdir" --sample "$sample" \
+#         > "$LOG_DIR/mycoplasma_${sample}.log" 2>&1
 
-    if [[ -n "$COSMIC_DIR" ]]; then
-        echo "[STEP] COSMIC mutation calling for $sample..."
-        Rscript /pipeline/modules/cancer_mutation_calling/COSMIC_cancer_mutation_calling.r \
-            --ref_dir "$REF_DIR" --cosmic_dir "$COSMIC_DIR" --output_dir "$sample_outdir" --sample "$sample" \
-            > "$LOG_DIR/cancer_mutation_mapping_${sample}.log" 2>&1
-    fi
+#     if [[ -n "$COSMIC_DIR" ]]; then
+#         echo "[STEP] COSMIC mutation calling for $sample..."
+#         Rscript /pipeline/modules/cancer_mutation_calling/COSMIC_cancer_mutation_calling.r \
+#             --ref_dir "$REF_DIR" --cosmic_dir "$COSMIC_DIR" --output_dir "$sample_outdir" --sample "$sample" \
+#             > "$LOG_DIR/cancer_mutation_mapping_${sample}.log" 2>&1
+#     fi
 
-    echo "[STEP] eSNPKaryotyping for $sample..."
-    Rscript /pipeline/modules/eSNPKaryotyping/run_eSNPKaryotyping.R \
-        --ref_dir "$REF_DIR" --output_dir "$sample_outdir" --sample "$sample" \
-        > "$LOG_DIR/ekaryo_${sample}.log" 2>&1
+#     echo "[STEP] eSNPKaryotyping for $sample..."
+#     Rscript /pipeline/modules/eSNPKaryotyping/run_eSNPKaryotyping.R \
+#         --ref_dir "$REF_DIR" --output_dir "$sample_outdir" --sample "$sample" \
+#         > "$LOG_DIR/ekaryo_${sample}.log" 2>&1
 
-    echo "[DONE] Finished processing $sample"
-done
+#     echo "[DONE] Finished processing $sample"
+# done
 
 # echo "[STEP] Generating summary PDF..."
 # Rscript /pipeline/report_builder.R \
 #     --output_dir "$OUTPUT_DIR" --project "$PROJECT" \
 #     > "$LOG_DIR/project_summary.log" 2>&1
+
+# ===========================================
+# Parallelized execution
+# ===========================================
+
+run_downstream() {
+    local sample="$1"
+    local sample_outdir="$OUTPUT_DIR/$sample"
+    mkdir -p "$sample_outdir"
+
+    echo "[INFO] Starting downstream analyses for sample: $sample"
+
+    local fq1="${FASTQ_DIR}/${sample}_R1_001.fastq.gz"
+    local fq2="${FASTQ_DIR}/${sample}_R2_001.fastq.gz"
+
+    # -------------------------------------------------
+    # Step 1: Mycoplasma detection
+    # -------------------------------------------------
+    echo "[STEP] Mycoplasma detection for $sample..."
+    bash /pipeline/modules/mycoplasma_detection/detect_mycoplasma.sh \
+        --fastq1 "$fq1" \
+        --fastq2 "$fq2" \
+        --ref_dir "$REF_DIR" \
+        --output_dir "$sample_outdir" \
+        --sample "$sample" \
+        > "$LOG_DIR/mycoplasma_${sample}.log" 2>&1
+
+    # -------------------------------------------------
+    # Step 2: COSMIC mutation calling (if provided)
+    # -------------------------------------------------
+    if [[ -n "${COSMIC_DIR:-}" ]]; then
+        echo "[STEP] COSMIC mutation calling for $sample..."
+        Rscript /pipeline/modules/cancer_mutation_calling/COSMIC_cancer_mutation_calling.r \
+            --ref_dir "$REF_DIR" \
+            --cosmic_dir "$COSMIC_DIR" \
+            --output_dir "$sample_outdir" \
+            --sample "$sample" \
+            > "$LOG_DIR/cancer_mutation_mapping_${sample}.log" 2>&1
+    else
+        echo "[SKIP] COSMIC_DIR not provided; skipping COSMIC mutation calling for $sample"
+    fi
+
+    # -------------------------------------------------
+    # Step 3: eSNPKaryotyping
+    # -------------------------------------------------
+    echo "[STEP] eSNPKaryotyping for $sample..."
+    Rscript /pipeline/modules/eSNPKaryotyping/run_eSNPKaryotyping.R \
+        --ref_dir "$REF_DIR" \
+        --output_dir "$sample_outdir" \
+        --sample "$sample" \
+        > "$LOG_DIR/ekaryo_${sample}.log" 2>&1
+
+    echo "[DONE] Finished downstream analyses for $sample"
+}
+
+export -f run_downstream
+export OUTPUT_DIR FASTQ_DIR LOG_DIR REF_DIR COSMIC_DIR
+
+MAX_JOBS=${MAX_JOBS:-$(nproc)}
+printf '%s\n' "${SAMPLES[@]}" | xargs -n1 -P "$MAX_JOBS" bash -c 'run_downstream "$@"' _
+
 
 echo "[STEP] Organizing output directories..."
 
