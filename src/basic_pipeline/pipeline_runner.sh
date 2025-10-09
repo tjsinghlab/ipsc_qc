@@ -412,5 +412,6 @@ mkdir -p "$OUTPUT_DIR/plots/PACNet"
 cp "$OUTPUT_DIR/pacnet/PACNet_heatmap.png" "$OUTPUT_DIR/plots/PACNet/"
     
 mkdir -p "$OUTPUT_DIR/plots/outlier_analysis"
+[ -f "$OUTPUT_DIR/outlier_analysis/PCA_pacnet_scores.pdf" ] && cp "$OUTPUT_DIR/outlier_analysis/PCA_pacnet_scores.pdf" "$OUTPUT_DIR/plots/outlier_analysis/"
 
 echo "[INFO] Pipeline completed. Results in $OUTPUT_DIR"
