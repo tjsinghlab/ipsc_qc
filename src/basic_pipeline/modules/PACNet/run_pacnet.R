@@ -260,7 +260,7 @@ cat("names(grp_names1):", names(grp_names1), "\n")
 # Re-order classMatrixQuery to match order of rows in querySampTab
 #classMatrixEx <- classMatrixEx[,names(grp_names1)]
 
-write.csv(classMatrixEx, file="classification_scores.csv")
+write.csv(classMatrixEx, file=file.path(pacnet_outdir, "classification_scores.csv"))
 write.csv(querySampTab, file="classification_sample_table.csv")
 
 ####################################
