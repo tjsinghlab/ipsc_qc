@@ -1,21 +1,53 @@
 # iPSC QC Pipeline
 
-This pipeline will first process raw fastq files (bulk RNA sequencing) using fastqc, STAR alignment, and RSEM. GATK germline variant calling will be performed, in addition to several QC metrics, including cancer mutation calling (in select oncogenes), eSNPKaryotyping, mycoplasma detection, PACNet classification, and outlier assessment.
+This pipeline includes: 
+- Processing raw fastq files (bulk RNA sequencing) using fastqc, STAR alignment, and RSEM
+- GATK germline variant calling
+- Cancer mutation calling (in select oncogenes)
+- eSNPKaryotyping
+- Mycoplasma detection (*Mycoplasma fermentans* and *Mycoplasma orale*)
+- PACNet classification
+- Outlier assessment
+  
 This pipeline expects a directory of fastq.gz (paired end: R1 and R2) files from a bulk RNA sequencing run.
 
-See wiki for more details.
+See [wiki](https://github.com/tjsinghlab/ipsc_qc/wiki/Running-the-Pipeline) for more details.
 
 ---
 
 ## Table of Contents
 
+- [Running the Pipeline](#running-the-pipeline)
 - [Requirements](#requirements)
 - [Inputs](#inputs)
-- [Running the Pipeline](#running-the-pipeline)
 - [Outputs](#outputs)
 - [Directory Structure](#directory-structure)
+- [Notes](#notes)
 
 ---
+
+## Running the Pipeline
+### Example Command
+
+```
+#Download docker image as singularity image (for HPC compatibility):
+
+singularity pull ipsc_qc.sif docker://kjakubiak16/ipsc_qc:latest
+
+#Run the singularity command. First bind the directories, then supply bound directories as arguments.
+
+singularity exec \
+  -B ./path/to/fastqs:/data \
+  -B ./path/to/ref_dir:/ref \
+  -B ./path/to/COSMIC_DB:/cosmic \
+  -B ./path/to/output_dir:/output \
+  ipsc_qc.sif \
+  /pipeline/pipeline_runner.sh \
+    --fastq_dir /data \
+    --output_dir /output \
+    --ref_dir /ref \
+    --cosmic_dir /cosmic
+```
 
 ## Requirements
 ### Reference COSMIC Database Files (provide in --cosmic_dir argument; default is ./cosmic)
@@ -28,7 +60,7 @@ See wiki for more details.
   *Directory with dbSNP build 142 common SNP files (GTF format), one per chromosome. Human: X = 23, Y = 24. Source: UCSC Table Browser, snp142common table.*
 - `genes.txt`
   *File containing a list of oncogenes for assessment. Lives in this repo; download into your /ref dir (the one you provide to the --ref_dir argument), and add whichever genes you want analyzed against COSMIC.*
-- GTEX and RSEM References (`Homo_sapiens_assembly38_noALT_noHLA_noDecoy.fasta`, `Homo_sapiens_assembly38_noALT_noHLA_noDecoy.fasta.fai`, `Homo_sapiens_assembly38_noALT_noHLA_noDecoy.dict`, `gencode.v39.GRCh38.genes.collapsed_only`        
+- GTEX and RSEM References (`Homo_sapiens_assembly38_noALT_noHLA_noDecoy.fasta`, `Homo_sapiens_assembly38_noALT_noHLA_noDecoy.fasta.fai`, `Homo_sapiens_assembly38_noALT_noHLA_noDecoy.dict`, `gencode.v39.GRCh38.genes.collapsed_only`  
   *(requester pays enabled; cannot be universally downloaded within pipeline))*
 
 #### If not included in user-provided reference directory (ref_dir), the following files will be automatically downloaded to ref_dir:
@@ -72,6 +104,14 @@ The pipeline depends on the following command line tools:
 
 ## Inputs
 
+| Argument         | Description                                                                | Default                        |
+|------------------|----------------------------------------------------------------------------|--------------------------------|
+| `--ref_dir`      | Directory for reference files                                              | `/refs`                        |
+| `--fastq_dir`    | Directory containing input files (fastq.gz sequencing files) for a run     | `./fastq`                      |
+| `--output_dir`   | Output directory                                                           | `./outputs`                    |
+| `--cosmic_dir`   | Directory containing downloaded COSMIC database files.                     | `cosmic`                       |
+| `--project`      | Project name                                                               | `default_project`              |
+
 ### Input Directories
 - `fastq_dir/`  
   *FASTQ files from sequencing run (bulk RNAseq)*
@@ -88,42 +128,10 @@ The pipeline depends on the following command line tools:
 File base names should be unique for each sample and consistent across file types  
 (e.g., `sample1.vcf`, `sample1.bam`, `sample1.genes.results`, `sample1_R1.fastq.gz`, `sample1_R2.fastq.gz`)
 
-
-### Required Directories
-
-| Argument         | Description                                                                | Default                        | Required |
-|------------------|----------------------------------------------------------------------------|--------------------------------|----------|
-| `--ref_dir`      | Directory for reference files                                       | `/refs`                        | Yes      |
-| `--fastq_dir`    | Directory containing input files (fastq.gz sequencing files) for a run     | `./fastq`                      | Yes      |
-| `--output_dir`   | Output directory                                                           | `./outputs`                    | No       |
-| `--cosmic_dir`   | Directory containing downloaded COSMIC database files.                     | `cosmic`                       | No       |
-| `--project`      | Project name                                                               | `default_project`              | No       |
-
 ---
 
-## Running the Pipeline
-
-```
-#Download docker image as singularity image (for HPC compatibility):
-
-singularity pull ipsc_qc.sif docker://kjakubiak16/ipsc_qc:latest
-
-#Run the singularity command. First bind the directories, then supply bound directories as arguments.
-
-singularity exec \
-  -B ./path/to/fastqs:/data \
-  -B ./path/to/ref_dir:/ref \
-  -B ./path/to/COSMIC_DB:/cosmic \
-  -B ./path/to/output_dir:/output \
-  ipsc_qc.sif \
-  /pipeline/pipeline_runner.sh \
-    --fastq_dir /data \
-    --output_dir /output \
-    --ref_dir /ref \
-    --cosmic_dir /cosmic
-```
-
-## Output Directory Structure
+## Outputs
+### Output Directory Structure
 
 ```
 output_dir
@@ -150,6 +158,7 @@ output_dir
   │    ├── classification_validation_hm.png
   │    └── classification_scores.csv
   ├── outlier_analysis
+  │    └── PCA_pacnet_scores.pdf
   ├── sample_01
   │    ├── mycoplasma
   │    │   ├── sample_01_flagstat.txt
@@ -209,7 +218,7 @@ output_dir
 
 ```
 
-
+## Directory structure
 ### Basic pipeline repo structure
 ```
 src
@@ -267,3 +276,7 @@ src
            └── CellNet_master.tar.gz
 ```
 ---
+
+## Notes
+
+
