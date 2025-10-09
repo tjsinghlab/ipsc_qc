@@ -9,6 +9,7 @@ suppressPackageStartupMessages({
   library(stringr)
 })
 
+#Define variables from arguments
 option_list <- list(
   make_option("--sample", type = "character", default = NULL,
               help = "Sample name (used for labeling outputs)", metavar = "character"),
@@ -33,7 +34,7 @@ untar(file.path(cosmic_dir,"Cosmic_CancerGeneCensus_Tsv_v101_GRCh38.tar"), exdir
 
 Organism="Human"
 print("Reading VCF file...")
-#Directory  
+#Read and process VCF file in R 
 vcf_file = file.path(output_dir, "variant_calling", paste0(sample_id, ".variant_filtered.vcf.gz"))
 output_dir <- file.path(output_dir, "cosmic_calling")
 readData = read.delim(vcf_file,as.is=T)
@@ -177,7 +178,7 @@ plotty <- ggplot(df_plot, aes(
     title = "SNP Hits in Cancer Mutation Database Metrics",
     subtitle = "Cosmic_MutantCensus_Tsv_v101_GRCh38"
   ) +
-  # Professional palette: subtle, balanced tones
+  
   scale_fill_brewer(palette = "Set2") +
   
   theme_minimal(base_size = 14) +
@@ -224,16 +225,16 @@ plotty <- ggplot(df_plot, aes(
     panel.grid.major.y = element_line(color = "gray90", linewidth = 0.3)
   )
 
-# Save it like a masterpiece
+#export plot
 ggsave(
   filename = "CancerMutationPlot.png",
   plot = plotty,
   device = "png",
   path = output_dir,
-  width = 14,
+  width = 16,
   height = 7,
   dpi = 300
 )
 
-
+#export results
 write.csv(final_df, file.path(output_dir, paste0(sample_id, "_CancerMutations.tsv")), sep = "\t", row.names = FALSE)

@@ -2,9 +2,7 @@
 # Mycoplasma detection per sample
 set -euo pipefail
 
-# -------------------------------
-# Parse named arguments
-# -------------------------------
+#Define variables from arguments
 FASTQ1_DIR=""
 FASTQ2_DIR=""
 OUTPUT_DIR=""
@@ -34,13 +32,11 @@ if [[ -z "$SAMPLE" ]]; then
     exit 1
 fi
 
-# [[ -d "$FASTQ_DIR" ]] || { echo "[ERROR] Directory not found: $FASTQ_DIR"; exit 1; }
-
 SAMPLE_OUT="$OUTPUT_DIR/mycoplasma"
 mkdir -p "$SAMPLE_OUT"
 
 # -------------------------------
-# Reference genomes (from Docker image at /ref/)
+# Reference genomes (from ./ref)
 # -------------------------------
 REF_DIR="/ref"
 declare -A GENOMES
@@ -50,9 +46,11 @@ GENOMES[fermentans]="GCF_003704055.1_ASM370405v1_genomic.fna.gz"
 command -v bowtie2 >/dev/null 2>&1 || { echo "[ERROR] bowtie2 not found"; exit 1; }
 command -v samtools >/dev/null 2>&1 || { echo "[ERROR] samtools not found"; exit 1; }
 
+#Define output file
 ALIGN_STATS_FILE="$SAMPLE_OUT/mycoplasma_alignment_stats.tsv"
 echo -e "Sample\tSpecies\tTotal_Reads\tMapped_Reads\tPercent_Aligned" > "$ALIGN_STATS_FILE"
 
+#Loop over fermentans and orale genomes
 for species in "${!GENOMES[@]}"; do
     GENOME_FILE="${GENOMES[$species]}"
     GENOME_PATH="$REF_DIR/$GENOME_FILE"

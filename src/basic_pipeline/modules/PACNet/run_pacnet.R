@@ -14,7 +14,7 @@ suppressPackageStartupMessages({
   library(jsonlite)
 })
 
-# ---------------- CLI options ----------------
+#Define variables from arguments
 option_list <- list(
   make_option(c("-s", "--sample"), type="character",
               help="Sample name (basename before underscore in FASTQ)"),
@@ -33,7 +33,7 @@ project_name <- opt$project
 output_dir <- opt$output_dir
 ref_dir <- opt$ref
 
-# ---------------- Locate RSEM outputs automatically ----------------
+# Find RSEM outputs automatically
 message("Searching for RSEM outputs under: ", output_dir)
 
 # Find all subdirectories inside output_dir (each should correspond to a sample)

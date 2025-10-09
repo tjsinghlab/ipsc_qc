@@ -8,9 +8,7 @@ suppressPackageStartupMessages({
   library(patchwork)
 })
 
-# -------------------------------
-# Command-line options
-# -------------------------------
+#Define variables from arguments
 option_list <- list(
   make_option(c("-p", "--project"), type="character", default="default_project",
               help="Project name", metavar="character"),
@@ -29,7 +27,7 @@ sample_outdir <- file.path(output_dir, "pacnet")
 message("[INFO] Processing samples.")
 
 # -------------------------------
-# Load per-sample count matrix
+# Load per-sample count matrix (created during PACNet step from RSEM outputs)
 # -------------------------------
 counts_file  <- file.path(output_dir, "pacnet/query_matrix.csv")
 if (!file.exists(counts_file)) stop("Counts file not found: ", counts_file)
@@ -39,7 +37,7 @@ cpm_counts <- cpm(counts_new)
 log_counts <- log2(cpm_counts + 1)
 log_counts_filtered <- log_counts[apply(log_counts, 1, var) > 0, ]
 
-# PCA on counts
+# PCA on counts/gene expression
 pca_counts <- prcomp(t(log_counts_filtered), scale. = TRUE)
 pc_count<-min(ncol(log_counts_filtered), 5)
 pcs_counts <- pca_counts$x[, 1:pc_count]
@@ -61,7 +59,7 @@ pca_plot_counts <- ggplot(df_counts, aes(x = PC1, y = PC2, color = Outlier, labe
   labs(title = paste(project_name, "- PCA: Expression Counts"))
 
 # Save counts PCA
-counts_pdf <- file.path(output_dir, "pacnet/PCA_counts.pdf")
+counts_pdf <- file.path(output_dir, "outlier_analysis/PCA_gene_expression.pdf")
 ggsave(filename = counts_pdf, plot = pca_plot_counts, width = 8, height = 6)
 
 # -------------------------------
