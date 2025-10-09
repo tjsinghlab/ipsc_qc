@@ -1,5 +1,7 @@
 # iPSC QC Pipeline
 
+<img width="2327" height="380" alt="Screenshot 2025-10-09 at 2 42 57 PM" src="https://github.com/user-attachments/assets/61f7b78d-afed-43fe-9e13-06de2e3377c6" />
+
 This pipeline includes: 
 - Processing raw fastq files (bulk RNA sequencing) using fastqc, STAR alignment, and RSEM
 - GATK germline variant calling
