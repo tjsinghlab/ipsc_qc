@@ -68,7 +68,7 @@ ggsave(filename = counts_pdf, plot = pca_plot_counts, width = 8, height = 6)
 # PCA on PACNet ESC scores
 # -------------------------------
 dir.create(file.path(output_dir, "outlier_analysis"), recursive = TRUE, showWarnings = FALSE)
-scores_file <- file.path(output_dir, "outlier_analysis/classification_scores.csv")
+scores_file <- file.path(output_dir, "pacnet/classification_scores.csv")
 if (!file.exists(scores_file)) stop("PACNet scores file not found: ", scores_file)
 scores <- read.csv(scores_file, row.names = 1)
 
