@@ -3,7 +3,7 @@
 This pipeline will first process raw fastq files (bulk RNA sequencing) using fastqc, STAR alignment, and RSEM. GATK germline variant calling will be performed, in addition to several QC metrics, including cancer mutation calling (in select oncogenes), eSNPKaryotyping, mycoplasma detection, PACNet classification, and outlier assessment.
 This pipeline expects a directory of fastq.gz (paired end: R1 and R2) files from a bulk RNA sequencing run.
 
-See wiki for more details.
+See [wiki](https://github.com/tjsinghlab/ipsc_qc/wiki/Running-the-Pipeline) for more details.
 
 ---
 
