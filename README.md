@@ -25,6 +25,7 @@ See [wiki](https://github.com/tjsinghlab/ipsc_qc/wiki/Running-the-Pipeline) for 
 - [Outputs](#outputs)
 - [Directory Structure](#directory-structure)
 - [Notes](#notes)
+- [Sources and Citations](#citations)
 
 ---
 
@@ -280,5 +281,19 @@ src
 ---
 
 ## Notes
+- This pipeline is memory-intensive. Implementation on HPC is recommended.
+- WDL scripts will utilize cromwell, but a caper server will not be started. Backend is local. All packages and scripts are contained within the image; user does not need to install anything beyond what is included in the [requirements](#requirements) section.
 
+---
 
+## Citations
+
+- **COSMIC: the Catalogue Of Somatic Mutations In Cancer**: Tate JG, Bamford S, Jubb HC, Sondka Z, Beare DM, Bindal N, Boutselakis H, Cole CG, Creatore C, Dawson E, Fish P, Harsha B, Hathaway C, Jupe SC, Kok CY, Noble K, Ponting L, Ramshaw CC, Rye CE, Speedy HE, Stefancsik R, Thompson SL, Wang S, Ward S, Campbell PJ, Forbes SA. COSMIC: the Catalogue Of Somatic Mutations In Cancer. Nucleic Acids Res. 2019 Jan 8;47(D1):D941-D947. doi: 10.1093/nar/gky1015. PMID: 30371878; PMCID: PMC6323903.
+- **PACNet (Platform-Agnostic CellNet)**: Lo EKW, Velazquez JJ, Peng D, Kwon C, Ebrahimkhani MR, Cahan P. Platform-agnostic CellNet enables cross-study analysis of cell fate engineering protocols. Stem Cell Reports. 2023 Aug 8;18(8):1721-1742. doi: 10.1016/j.stemcr.2023.06.008. Epub 2023 Jul 20. PMID: 37478860; PMCID: PMC10444577.
+- **eSNPKaryotyping**: Weissbein U, Schachter M, Egli D, Benvenisty N. Analysis of chromosomal aberrations and recombination by allelic bias in RNA-Seq. Nat Commun. 2016 Jul 7;7:12144. doi: 10.1038/ncomms12144. PMID: 27385103; PMCID: PMC4941052.
+- **GATK, Docker, WDL**: Van der Auwera GA & O'Connor BD. (2020). Genomics in the Cloud: Using Docker, GATK, and WDL in Terra (1st Edition). O'Reilly Media.
+- **fastqc**: Li, B., Dewey, C.N. RSEM: accurate transcript quantification from RNA-Seq data with or without a reference genome. BMC Bioinformatics 12, 323 (2011). https://doi.org/10.1186/1471-2105-12-323
+- **RSEM**: Li, B., Dewey, C.N. RSEM: accurate transcript quantification from RNA-Seq data with or without a reference genome. BMC Bioinformatics 12, 323 (2011). https://doi.org/10.1186/1471-2105-12-323
+- **STAR Alignment**: Dobin A, Davis CA, Schlesinger F, Drenkow J, Zaleski C, Jha S, Batut P, Chaisson M, Gingeras TR. STAR: ultrafast universal RNA-seq aligner. Bioinformatics. 2013 Jan 1;29(1):15-21. doi: 10.1093/bioinformatics/bts635. Epub 2012 Oct 25. PMID: 23104886; PMCID: PMC3530905.
+- **parallel**: O. Tange (2018): GNU Parallel 2018, March 2018, https://doi.org/10.5281/zenodo.1146014.
+- **Bowtie**: Langmead, B., Salzberg, S. Fast gapped-read alignment with Bowtie 2. Nat Methods 9, 357–359 (2012). https://doi.org/10.1038/nmeth.1923
