@@ -55,7 +55,7 @@ singularity exec \
 ## Requirements
 ### Reference COSMIC Database Files (provide in --cosmic_dir argument; default is ./cosmic)
 #### Must be provided by user
-- `Cosmic_CancerGeneCensus_Tsv_v101_GRCh37.tar`  
+- `Cosmic_CancerGeneCensus_Tsv_v101_GRCh38.tar`  
   *Cosmic Database; MUST BE DOWNLOADED BY USER AND PROVIDED IN COSMIC_DIR ARGUMENT. If not, cancer mutation calling will not be performed.*
 
 ### Reference Files (place in `ref/` directory; default is ./ref)
