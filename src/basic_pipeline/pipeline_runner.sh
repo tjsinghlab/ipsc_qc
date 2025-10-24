@@ -201,12 +201,10 @@ echo "[INFO] Found ${#SAMPLES[@]} samples: ${SAMPLES[*]}"
 #     fi
 # done
 
-#!/usr/bin/env bash
-set -euo pipefail
+# ===========================================
+# Parallelized execution
+# ===========================================
 
-# ===========================================
-# Function: run_sample
-# ===========================================
 run_sample() {
     local sample="$1"
 
@@ -219,15 +217,8 @@ run_sample() {
     local bam_file="$sample_outdir/Mark_duplicates_outputs/${sample}.Aligned.sortedByCoord.out.md.bam"
     local rsem_file="$sample_outdir/RSEM_outputs/${sample}.rsem.genes.results.gz"
 
-    # Optional: guard against memory overrun (soft cap)
-    if [[ -n "${USE_MEM_MB:-}" ]]; then
-        ulimit -v $(( USE_MEM_MB * 1024 )) 2>/dev/null || true
-    fi
-
-    # ----------------------
-    # Step 1: Preprocessing
-    # ----------------------
-    if [ -s "$bam_file" ] && [ -s "$rsem_file" ]; then
+    # Step 1
+    if [ -f "$bam_file" ] && [ -f "$rsem_file" ]; then
         echo "[SKIP] Preprocessing already complete for $sample"
     else
         echo "[RUN] Running preprocessing for $sample..."
@@ -237,28 +228,12 @@ run_sample() {
             --output_dir "$sample_outdir" \
             --sample "$sample" \
             > "$LOG_DIR/${sample}_bulk_preprocess.log" 2>&1
-
-        # Wait/check loop — ensure both files exist & nonzero
-        echo "[WAIT] Checking preprocessing completion for $sample..."
-        for i in {1..30}; do
-            if [ -s "$bam_file" ] && [ -s "$rsem_file" ]; then
-                echo "[OK] Preprocessing complete for $sample"
-                break
-            fi
-            sleep 10
-            if [ $i -eq 30 ]; then
-                echo "[ERROR] Preprocessing failed or incomplete for $sample after waiting 5 minutes."
-                return 1
-            fi
-        done
     fi
 
-    # Delete broken 'data' symlink silently
-    find . -xtype l -name data -delete 2>/dev/null || true
+    # Delete the broken 'data' symlink or variable if it exists
+    find . -xtype l -name data -delete
 
-    # ----------------------
-    # Step 2: Variant Calling
-    # ----------------------
+    # Step 2
     if [ -d "$sample_outdir/variant_calling" ] && \
        compgen -G "$sample_outdir/variant_calling/*.vcf.gz" > /dev/null; then
         echo "[SKIP] Variant calling already complete for $sample"
@@ -273,66 +248,49 @@ run_sample() {
     echo "[DONE] Preprocessing and variant calling for sample $sample completed."
 }
 
+# Detect memory and cores (SLURM-aware)
+get_total_memory_gb() {
+    if [[ -n "$SLURM_MEM_PER_NODE" ]]; then
+        echo $(( SLURM_MEM_PER_NODE / 1024 ))  # convert MB → GB
+    else
+        awk '/MemTotal/ {printf "%.0f", $2 / 1024 / 1024}' /proc/meminfo
+    fi
+}
+
+get_total_cores() {
+    if [[ -n "$SLURM_CPUS_ON_NODE" ]]; then
+        echo "$SLURM_CPUS_ON_NODE"
+    else
+        nproc
+    fi
+}
+
+# Each sample needs ~100 GB
+MEM_PER_SAMPLE=100
+
+TOTAL_MEM_GB=$(get_total_memory_gb)
+TOTAL_CORES=$(get_total_cores)
+
+# Compute max concurrent jobs (respect memory and cores)
+MAX_JOBS=$(( TOTAL_MEM_GB / MEM_PER_SAMPLE ))
+(( MAX_JOBS < 1 )) && MAX_JOBS=1
+(( MAX_JOBS > TOTAL_CORES )) && MAX_JOBS=$TOTAL_CORES
+
+echo "[INFO] SLURM-aware resource detection:"
+echo "       Memory available: ${TOTAL_MEM_GB} GB"
+echo "       Cores available:  ${TOTAL_CORES}"
+echo "       Max parallel jobs: ${MAX_JOBS}"
+
+# Export the job function and environment
 export -f run_sample
 export OUTPUT_DIR FASTQ_DIR LOG_DIR PY_RUNNER1 PY_RUNNER2 REF_DIR COSMIC_DIR
 
-# ===========================================
-# Dynamic Resource Allocation
-# ===========================================
-
-# Detect total cores and memory
-TOTAL_CORES=$(nproc)
-TOTAL_MEM_MB=$(awk '/MemTotal/ {print int($2/1024)}' /proc/meminfo)
-
-# Allocate 85% of both
-USE_CORES=$(awk -v total="$TOTAL_CORES" 'BEGIN {printf "%d", total * 0.85}')
-USE_MEM_MB=$(awk -v total="$TOTAL_MEM_MB" 'BEGIN {printf "%d", total * 0.85}')
-
-# Estimate memory required per job (in MB)
-MEM_PER_JOB_MB=50000  # 50GB per sample (adjust as needed)
-
-# Compute max jobs limited by memory and cores
-MAX_JOBS_BY_MEM=$(( USE_MEM_MB / MEM_PER_JOB_MB ))
-MAX_JOBS=$(( USE_CORES < MAX_JOBS_BY_MEM ? USE_CORES : MAX_JOBS_BY_MEM ))
-MAX_JOBS=$(( MAX_JOBS > 0 ? MAX_JOBS : 1 ))
-
-echo "[INFO] Detected $TOTAL_CORES cores and ${TOTAL_MEM_MB}MB total memory."
-echo "[INFO] Using ${USE_CORES} cores and ${USE_MEM_MB}MB (≈85%) for processing."
-echo "[INFO] Estimated ${MEM_PER_JOB_MB}MB per sample → running up to $MAX_JOBS samples in parallel."
-
-export USE_MEM_MB MAX_JOBS
-
-# ===========================================
-# Phase 1: Parallel Preprocessing + Variant Calling
-# ===========================================
+# Run samples in parallel with smart throttling
 printf '%s\n' "${SAMPLES[@]}" | xargs -n1 -P "$MAX_JOBS" bash -c 'run_sample "$@"' _
 
-# Wait for all background jobs to complete
-wait
 
 # ===========================================
-# Verify All Preprocessing Complete
-# ===========================================
-echo "[STEP] Verifying all samples completed preprocessing..."
-
-incomplete_samples=()
-for sample in "${SAMPLES[@]}"; do
-    bam="$OUTPUT_DIR/$sample/Mark_duplicates_outputs/${sample}.Aligned.sortedByCoord.out.md.bam"
-    rsem="$OUTPUT_DIR/$sample/RSEM_outputs/${sample}.rsem.genes.results.gz"
-    if [ ! -s "$bam" ] || [ ! -s "$rsem" ]; then
-        incomplete_samples+=("$sample")
-    fi
-done
-
-if [ ${#incomplete_samples[@]} -gt 0 ]; then
-    echo "[WARN] The following samples did not complete preprocessing:"
-    printf ' - %s\n' "${incomplete_samples[@]}"
-    echo "[WARN] Skipping PACNet and downstream steps."
-    exit 1
-fi
-
-# ===========================================
-# Phase 2: Run PACNet + Downstream Scripts
+# Phase 2: Run PACNet + downstream scripts
 # ===========================================
 echo "[STEP] Running PACNet..."
 Rscript /pipeline/modules/PACNet/run_pacnet.R \
