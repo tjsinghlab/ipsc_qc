@@ -201,10 +201,12 @@ echo "[INFO] Found ${#SAMPLES[@]} samples: ${SAMPLES[*]}"
 #     fi
 # done
 
-# ===========================================
-# Parallelized execution
-# ===========================================
+#!/usr/bin/env bash
+set -euo pipefail
 
+# ===========================================
+# Function: run_sample
+# ===========================================
 run_sample() {
     local sample="$1"
 
@@ -217,8 +219,15 @@ run_sample() {
     local bam_file="$sample_outdir/Mark_duplicates_outputs/${sample}.Aligned.sortedByCoord.out.md.bam"
     local rsem_file="$sample_outdir/RSEM_outputs/${sample}.rsem.genes.results.gz"
 
-    # Step 1
-    if [ -f "$bam_file" ] && [ -f "$rsem_file" ]; then
+    # Optional: guard against memory overrun (soft cap)
+    if [[ -n "${USE_MEM_MB:-}" ]]; then
+        ulimit -v $(( USE_MEM_MB * 1024 )) 2>/dev/null || true
+    fi
+
+    # ----------------------
+    # Step 1: Preprocessing
+    # ----------------------
+    if [ -s "$bam_file" ] && [ -s "$rsem_file" ]; then
         echo "[SKIP] Preprocessing already complete for $sample"
     else
         echo "[RUN] Running preprocessing for $sample..."
@@ -228,12 +237,28 @@ run_sample() {
             --output_dir "$sample_outdir" \
             --sample "$sample" \
             > "$LOG_DIR/${sample}_bulk_preprocess.log" 2>&1
+
+        # Wait/check loop — ensure both files exist & nonzero
+        echo "[WAIT] Checking preprocessing completion for $sample..."
+        for i in {1..30}; do
+            if [ -s "$bam_file" ] && [ -s "$rsem_file" ]; then
+                echo "[OK] Preprocessing complete for $sample"
+                break
+            fi
+            sleep 10
+            if [ $i -eq 30 ]; then
+                echo "[ERROR] Preprocessing failed or incomplete for $sample after waiting 5 minutes."
+                return 1
+            fi
+        done
     fi
 
-    # Delete the broken 'data' symlink or variable if it exists
-    find . -xtype l -name data -delete
+    # Delete broken 'data' symlink silently
+    find . -xtype l -name data -delete 2>/dev/null || true
 
-    # Step 2
+    # ----------------------
+    # Step 2: Variant Calling
+    # ----------------------
     if [ -d "$sample_outdir/variant_calling" ] && \
        compgen -G "$sample_outdir/variant_calling/*.vcf.gz" > /dev/null; then
         echo "[SKIP] Variant calling already complete for $sample"
@@ -251,12 +276,63 @@ run_sample() {
 export -f run_sample
 export OUTPUT_DIR FASTQ_DIR LOG_DIR PY_RUNNER1 PY_RUNNER2 REF_DIR COSMIC_DIR
 
-MAX_JOBS=${MAX_JOBS:-$(nproc)}
-printf '%s\n' "${SAMPLES[@]}" | xargs -n1 -P "$MAX_JOBS" bash -c 'run_sample "$@"' _
+# ===========================================
+# Dynamic Resource Allocation
+# ===========================================
 
+# Detect total cores and memory
+TOTAL_CORES=$(nproc)
+TOTAL_MEM_MB=$(awk '/MemTotal/ {print int($2/1024)}' /proc/meminfo)
+
+# Allocate 85% of both
+USE_CORES=$(awk -v total="$TOTAL_CORES" 'BEGIN {printf "%d", total * 0.85}')
+USE_MEM_MB=$(awk -v total="$TOTAL_MEM_MB" 'BEGIN {printf "%d", total * 0.85}')
+
+# Estimate memory required per job (in MB)
+MEM_PER_JOB_MB=50000  # 50GB per sample (adjust as needed)
+
+# Compute max jobs limited by memory and cores
+MAX_JOBS_BY_MEM=$(( USE_MEM_MB / MEM_PER_JOB_MB ))
+MAX_JOBS=$(( USE_CORES < MAX_JOBS_BY_MEM ? USE_CORES : MAX_JOBS_BY_MEM ))
+MAX_JOBS=$(( MAX_JOBS > 0 ? MAX_JOBS : 1 ))
+
+echo "[INFO] Detected $TOTAL_CORES cores and ${TOTAL_MEM_MB}MB total memory."
+echo "[INFO] Using ${USE_CORES} cores and ${USE_MEM_MB}MB (≈85%) for processing."
+echo "[INFO] Estimated ${MEM_PER_JOB_MB}MB per sample → running up to $MAX_JOBS samples in parallel."
+
+export USE_MEM_MB MAX_JOBS
 
 # ===========================================
-# Phase 2: Run PACNet + downstream scripts
+# Phase 1: Parallel Preprocessing + Variant Calling
+# ===========================================
+printf '%s\n' "${SAMPLES[@]}" | xargs -n1 -P "$MAX_JOBS" bash -c 'run_sample "$@"' _
+
+# Wait for all background jobs to complete
+wait
+
+# ===========================================
+# Verify All Preprocessing Complete
+# ===========================================
+echo "[STEP] Verifying all samples completed preprocessing..."
+
+incomplete_samples=()
+for sample in "${SAMPLES[@]}"; do
+    bam="$OUTPUT_DIR/$sample/Mark_duplicates_outputs/${sample}.Aligned.sortedByCoord.out.md.bam"
+    rsem="$OUTPUT_DIR/$sample/RSEM_outputs/${sample}.rsem.genes.results.gz"
+    if [ ! -s "$bam" ] || [ ! -s "$rsem" ]; then
+        incomplete_samples+=("$sample")
+    fi
+done
+
+if [ ${#incomplete_samples[@]} -gt 0 ]; then
+    echo "[WARN] The following samples did not complete preprocessing:"
+    printf ' - %s\n' "${incomplete_samples[@]}"
+    echo "[WARN] Skipping PACNet and downstream steps."
+    exit 1
+fi
+
+# ===========================================
+# Phase 2: Run PACNet + Downstream Scripts
 # ===========================================
 echo "[STEP] Running PACNet..."
 Rscript /pipeline/modules/PACNet/run_pacnet.R \
@@ -273,6 +349,7 @@ if [[ ${#SAMPLES[@]} -ge 4 ]]; then
 else
     echo "[SKIP] Outlier detection skipped: only ${#SAMPLES[@]} sample(s) found (minimum 4 required)."
 fi
+
 
 # # Now loop again for per-sample downstream modules
 # echo "[STEP] Running per-sample downstream analyses..."
