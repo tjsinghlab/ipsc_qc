@@ -179,9 +179,9 @@ plotty <- ggplot(df_plot, aes(
     subtitle = "Cosmic_MutantCensus_Tsv_v101_GRCh38"
   ) +
   
-  scale_fill_brewer(palette = "Set2") +
+  #scale_fill_brewer(palette = "Set2") +
   
-  theme_minimal(base_size = 14) +
+  #theme_minimal(base_size = 14) +
   theme(
     axis.text.x = element_text(
       angle = 45,
