@@ -55,7 +55,7 @@ singularity exec \
 ## Requirements
 ### Reference COSMIC Database Files (provide in --cosmic_dir argument; default is ./cosmic)
 #### Must be provided by user
-- `Cosmic_CancerGeneCensus_Tsv_v101_GRCh37.tar`  
+- `Cosmic_CancerGeneCensus_Tsv_v101_GRCh38.tar`  
   *Cosmic Database; MUST BE DOWNLOADED BY USER AND PROVIDED IN COSMIC_DIR ARGUMENT. If not, cancer mutation calling will not be performed.*
 
 ### Reference Files (place in `ref/` directory; default is ./ref)
@@ -111,21 +111,9 @@ The pipeline depends on the following command line tools:
 |------------------|----------------------------------------------------------------------------|--------------------------------|
 | `--ref_dir`      | Directory for reference files                                              | `/refs`                        |
 | `--fastq_dir`    | Directory containing input files (fastq.gz sequencing files) for a run     | `./fastq`                      |
-| `--output_dir`   | Output directory                                                           | `./outputs`                    |
+| `--output_dir`   | Path to desired output directory                                           | `./outputs`                    |
 | `--cosmic_dir`   | Directory containing downloaded COSMIC database files.                     | `cosmic`                       |
 | `--project`      | Project name                                                               | `default_project`              |
-
-### Input Directories
-- `fastq_dir/`  
-  *FASTQ files from sequencing run (bulk RNAseq)*
-- `--output_dir`  
-  *Path to desired output directory (created if it doesn't exist; default: `./outputs`)*
-- `--ref_dir`
-  *Path to directory where reference files will live. Absent ref files will be downloaded within the pipeline.*
-
-### Additional Arguments
-- `--project`  
-  *Name of project for this batch; appears in plots*
 
 **Note:**  
 File base names should be unique for each sample and consistent across file types  
