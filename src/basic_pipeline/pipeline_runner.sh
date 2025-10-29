@@ -212,11 +212,12 @@ run_sample() {
     local sample_outdir="$OUTPUT_DIR/$sample"
     mkdir -p "$sample_outdir"
 
-    local fq1="${FASTQ_DIR}/${sample}_R1_001.fastq.gz"
-    local fq2="${FASTQ_DIR}/${sample}_R2_001.fastq.gz"
+    local fq1=$(ls "${FASTQ_DIR}/${sample}"*_R1*.fastq.gz 2>/dev/null || ls "${FASTQ_DIR}/${sample}"*_1*.fastq.gz 2>/dev/null || echo "")
+    local fq2=$(ls "${FASTQ_DIR}/${sample}"*_R2*.fastq.gz 2>/dev/null || ls "${FASTQ_DIR}/${sample}"*_2*.fastq.gz 2>/dev/null || echo "")
     local bam_file="$sample_outdir/Mark_duplicates_outputs/${sample}.Aligned.sortedByCoord.out.md.bam"
     local rsem_file="$sample_outdir/RSEM_outputs/${sample}.rsem.genes.results.gz"
 
+    echo "Running preprocessing with $fq1 and $fq2"
     # Step 1
     if [ -f "$bam_file" ] && [ -f "$rsem_file" ]; then
         echo "[SKIP] Preprocessing already complete for $sample"
@@ -353,8 +354,13 @@ run_downstream() {
 
     echo "[INFO] Starting downstream analyses for sample: $sample"
 
-    local fq1="${FASTQ_DIR}/${sample}_R1_001.fastq.gz"
-    local fq2="${FASTQ_DIR}/${sample}_R2_001.fastq.gz"
+    local fq1=$(ls "${FASTQ_DIR}/${sample}"*_R1*.fastq.gz 2>/dev/null || ls "${FASTQ_DIR}/${sample}"*_1*.fastq.gz 2>/dev/null || echo "")
+    local fq2=$(ls "${FASTQ_DIR}/${sample}"*_R2*.fastq.gz 2>/dev/null || ls "${FASTQ_DIR}/${sample}"*_2*.fastq.gz 2>/dev/null || echo "")
+
+    if [[ -z "$fq1" || -z "$fq2" ]]; then
+        echo "[ERROR] Could not find both R1 and R2 files for sample '$sample' in $FASTQ_DIR" >&2
+        exit 1
+    fi
 
     # -------------------------------------------------
     # Step 1: Mycoplasma detection
