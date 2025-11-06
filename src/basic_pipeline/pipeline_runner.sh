@@ -252,21 +252,69 @@ run_sample() {
 }
 
 # Detect memory and cores (SLURM-aware)
+# get_total_memory_gb() {
+#     if [[ -n "$SLURM_MEM_PER_NODE" ]]; then
+#         echo $(( SLURM_MEM_PER_NODE / 1024 ))  # convert MB → GB
+#     else
+#         awk '/MemTotal/ {printf "%.0f", $2 / 1024 / 1024}' /proc/meminfo
+#     fi
+# }
+
+# Detect memory and cores (with or without slurm)
 get_total_memory_gb() {
-    if [[ -n "$SLURM_MEM_PER_NODE" ]]; then
-        echo $(( SLURM_MEM_PER_NODE / 1024 ))  # convert MB → GB
+    local total_gb
+
+    # If running under SLURM, try to detect memory allocation
+    if [[ -n "${SLURM_MEM_PER_NODE:-}" ]]; then
+        total_gb=$(( SLURM_MEM_PER_NODE / 1024 ))  # MB → GB
+    elif [[ -n "${SLURM_MEM_PER_CPU:-}" && -n "${SLURM_CPUS_PER_TASK:-}" ]]; then
+        # Sometimes SLURM defines memory per CPU instead
+        total_gb=$(( (SLURM_MEM_PER_CPU * SLURM_CPUS_PER_TASK) / 1024 ))
     else
-        awk '/MemTotal/ {printf "%.0f", $2 / 1024 / 1024}' /proc/meminfo
+        # Fallback: detect actual available system memory (in GB)
+        # Use /proc/meminfo to get MemAvailable if possible, else MemTotal
+        local available_kb
+        available_kb=$(awk '/MemAvailable/ {print $2}' /proc/meminfo)
+        if [[ -z "$available_kb" ]]; then
+            available_kb=$(awk '/MemTotal/ {print $2}' /proc/meminfo)
+        fi
+        # Use 60% of available memory for safety when running outside SLURM
+        total_gb=$(awk -v kb="$available_kb" 'BEGIN {printf "%.0f", (kb / 1024 / 1024) * 0.6}')
     fi
+
+    echo "$total_gb"
 }
 
+
+# get_total_cores() {
+#     if [[ -n "$SLURM_CPUS_ON_NODE" ]]; then
+#         echo "$SLURM_CPUS_ON_NODE"
+#     else
+#         nproc
+#     fi
+# }
+
 get_total_cores() {
-    if [[ -n "$SLURM_CPUS_ON_NODE" ]]; then
-        echo "$SLURM_CPUS_ON_NODE"
+    local cores
+
+    # Prefer SLURM, if present
+    if [[ -n "${SLURM_CPUS_ON_NODE:-}" ]]; then
+        cores="$SLURM_CPUS_ON_NODE"
+    elif [[ -n "${SLURM_CPUS_PER_TASK:-}" ]]; then
+        cores="$SLURM_CPUS_PER_TASK"
     else
-        nproc
+        # Fall back to the system’s available cores
+        # Use nproc if available, otherwise parse /proc/cpuinfo
+        if command -v nproc &>/dev/null; then
+            cores=$(nproc)
+        else
+            cores=$(grep -c ^processor /proc/cpuinfo)
+        fi
     fi
+
+    echo "$cores"
 }
+
 
 # Each sample needs ~100 GB
 MEM_PER_SAMPLE=100
