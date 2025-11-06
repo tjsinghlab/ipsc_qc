@@ -279,7 +279,7 @@ get_total_memory_gb() {
             available_kb=$(awk '/MemTotal/ {print $2}' /proc/meminfo)
         fi
         # Use 60% of available memory for safety when running outside SLURM
-        total_gb=$(awk -v kb="$available_kb" 'BEGIN {printf "%.0f", (kb / 1024 / 1024) * 0.6}')
+        total_gb=$(awk -v kb="$available_kb" 'BEGIN {printf "%.0f", (kb / 1024 / 1024) * 0.8}')
     fi
 
     echo "$total_gb"
