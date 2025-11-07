@@ -207,6 +207,20 @@ echo "[INFO] Found ${#SAMPLES[@]} samples: ${SAMPLES[*]}"
 # Parallelized execution
 # ===========================================
 
+# Run caper init but only if default.conf file does not already exist
+# Ensure .caper directory exists
+if [ ! -d "$HOME/.caper" ]; then
+  mkdir -p "$HOME/.caper"
+fi
+
+# Only initialize if default.conf is missing
+if [ ! -f "$HOME/.caper/default.conf" ]; then
+  echo "[INFO] No Caper config found — running caper init slurm..."
+  caper init slurm --out "$HOME/.caper/default.conf"
+else
+  echo "[INFO] Existing Caper config found at $HOME/.caper/default.conf. Skipping init."
+fi
+
 run_sample() {
     local sample="$1"
 
