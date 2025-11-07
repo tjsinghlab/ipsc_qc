@@ -73,7 +73,7 @@ declare -A GENOMES
 GENOMES[orale]="GCF_000420105.1_ASM42010v1_genomic.fna.gz"
 GENOMES[fermentans]="GCF_003704055.1_ASM370405v1_genomic.fna.gz"
 GENOMES[hyorhinis]="GCF_900476065.1_50465_F02_genomic.fna.gz"
-GENOMES[human]="GCF_000001405.26_GRCh38_genomic.fna"
+#GENOMES[human]="GCF_000001405.26_GRCh38_genomic.fna"
 
 # -------------------------------
 # Output file for stats
