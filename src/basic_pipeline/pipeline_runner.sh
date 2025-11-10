@@ -134,8 +134,6 @@ RSEM_REF=$(resolve_ref "RSEM reference" "rsem_reference" \
    --gtf $REF_DIR/gencode.v39.GRCh38.annotation.gtf \
    --num-threads 4")
 
-# UCSC SNP142 common SNPs directory
-#SNP142_DIR=$(resolve_ref "dbSNP142 directory" "chr") #how to get from UCSC without using their interactive web table?? may need to be downloaded by user beforehand and included in provided /ref directory
 # ===========================================
 # Identify samples
 # ===========================================
@@ -155,53 +153,6 @@ if [[ ${#SAMPLES[@]} -eq 0 ]]; then
 fi
 
 echo "[INFO] Found ${#SAMPLES[@]} samples: ${SAMPLES[*]}"
-
-
-# ===========================================
-# Loop over samples
-# ===========================================
-# ===========================================
-# Phase 1: Run WDL pipelines for all samples
-# ===========================================
-# for sample in "${SAMPLES[@]}"; do
-#     echo "[INFO] Running WDLs for sample: $sample"
-#     sample_outdir="$OUTPUT_DIR/$sample"
-#     mkdir -p "$sample_outdir"
-
-#     fq1="${FASTQ_DIR}/${sample}_R1_001.fastq.gz"
-#     fq2="${FASTQ_DIR}/${sample}_R2_001.fastq.gz"
-
-#     bam_file="$sample_outdir/Mark_duplicates_outputs/${sample}.Aligned.sortedByCoord.out.md.bam"
-
-#     bai_file="${bam_file}.bai"
-#     rsem_file="$sample_outdir/RSEM_outputs/${sample}.rsem.genes.results.gz"
-
-#     echo "Looking for $bam_file and $rsem_file"
-#     # Step 1: Preprocessing
-#     if [ -f "$bam_file" ] && [ -f "$rsem_file" ]; then
-#         echo "[SKIP] $bam_file and $rsem_file already present. Skipping preprocessing for $sample"
-#     else
-#         echo "[RUN] Running preprocessing for $sample..."
-#         python3 "$PY_RUNNER1" \
-#             --fastq1 "$fq1" \
-#             --fastq2 "$fq2" \
-#             --output_dir "$sample_outdir" \
-#             --sample "$sample" \
-#             > "$LOG_DIR/${sample}_bulk_preprocess.log" 2>&1
-#     fi
-
-#     # Step 2: Variant Calling
-#     if [ -d "$sample_outdir/variant_calling" ] && \
-#     compgen -G "$sample_outdir/variant_calling/*.vcf.gz" > /dev/null; then
-#         echo "[SKIP] Variant calling outputs already present at $sample_outdir/variant_calling/. Skipping variant calling for $sample"
-#     else
-#         echo "[RUN] Running variant calling for $sample..."
-#         python3 "$PY_RUNNER2" \
-#             --output_dir "$sample_outdir" \
-#             --sample "$sample" \
-#             > "$LOG_DIR/${sample}_wdl2.log" 2>&1
-#     fi
-# done
 
 # ===========================================
 # Parallelized execution
@@ -265,15 +216,6 @@ run_sample() {
     echo "[DONE] Preprocessing and variant calling for sample $sample completed."
 }
 
-# Detect memory and cores (SLURM-aware)
-# get_total_memory_gb() {
-#     if [[ -n "$SLURM_MEM_PER_NODE" ]]; then
-#         echo $(( SLURM_MEM_PER_NODE / 1024 ))  # convert MB → GB
-#     else
-#         awk '/MemTotal/ {printf "%.0f", $2 / 1024 / 1024}' /proc/meminfo
-#     fi
-# }
-
 # Detect memory and cores (with or without slurm)
 get_total_memory_gb() {
     local total_gb
@@ -299,15 +241,6 @@ get_total_memory_gb() {
     echo "$total_gb"
 }
 
-
-# get_total_cores() {
-#     if [[ -n "$SLURM_CPUS_ON_NODE" ]]; then
-#         echo "$SLURM_CPUS_ON_NODE"
-#     else
-#         nproc
-#     fi
-# }
-
 get_total_cores() {
     local cores
 
@@ -328,7 +261,6 @@ get_total_cores() {
 
     echo "$cores"
 }
-
 
 # Each sample needs ~100 GB
 MEM_PER_SAMPLE=100
@@ -353,7 +285,6 @@ export OUTPUT_DIR FASTQ_DIR LOG_DIR PY_RUNNER1 PY_RUNNER2 REF_DIR COSMIC_DIR
 # Run samples in parallel with smart throttling
 printf '%s\n' "${SAMPLES[@]}" | xargs -n1 -P "$MAX_JOBS" bash -c 'run_sample "$@"' _
 
-
 # ===========================================
 # Phase 2: Run PACNet + downstream scripts
 # ===========================================
@@ -372,40 +303,6 @@ if [[ ${#SAMPLES[@]} -ge 4 ]]; then
 else
     echo "[SKIP] Outlier detection skipped: only ${#SAMPLES[@]} sample(s) found (minimum 4 required)."
 fi
-
-
-# # Now loop again for per-sample downstream modules
-# echo "[STEP] Running per-sample downstream analyses..."
-# for sample in "${SAMPLES[@]}"; do
-#     sample_outdir="$OUTPUT_DIR/$sample"
-#     echo "[INFO] Finding fastq files..."
-#     fq1="${FASTQ_DIR}/${sample}_R1_001.fastq.gz"
-#     fq2="${FASTQ_DIR}/${sample}_R2_001.fastq.gz"
-
-#     echo "[STEP] Mycoplasma detection for $sample..."
-#     bash /pipeline/modules/mycoplasma_detection/detect_mycoplasma.sh \
-#         --fastq1 "$fq1" --fastq2 "$fq2" --ref_dir "$REF_DIR" --output_dir "$sample_outdir" --sample "$sample" \
-#         > "$LOG_DIR/mycoplasma_${sample}.log" 2>&1
-
-#     if [[ -n "$COSMIC_DIR" ]]; then
-#         echo "[STEP] COSMIC mutation calling for $sample..."
-#         Rscript /pipeline/modules/cancer_mutation_calling/COSMIC_cancer_mutation_calling.r \
-#             --ref_dir "$REF_DIR" --cosmic_dir "$COSMIC_DIR" --output_dir "$sample_outdir" --sample "$sample" \
-#             > "$LOG_DIR/cancer_mutation_mapping_${sample}.log" 2>&1
-#     fi
-
-#     echo "[STEP] eSNPKaryotyping for $sample..."
-#     Rscript /pipeline/modules/eSNPKaryotyping/run_eSNPKaryotyping.R \
-#         --ref_dir "$REF_DIR" --output_dir "$sample_outdir" --sample "$sample" \
-#         > "$LOG_DIR/ekaryo_${sample}.log" 2>&1
-
-#     echo "[DONE] Finished processing $sample"
-# done
-
-# echo "[STEP] Generating summary PDF..."
-# Rscript /pipeline/report_builder.R \
-#     --output_dir "$OUTPUT_DIR" --project "$PROJECT" \
-#     > "$LOG_DIR/project_summary.log" 2>&1
 
 # ===========================================
 # Parallelized execution
@@ -472,7 +369,6 @@ export OUTPUT_DIR FASTQ_DIR LOG_DIR REF_DIR COSMIC_DIR
 MAX_JOBS=${MAX_JOBS:-$(nproc)}
 printf '%s\n' "${SAMPLES[@]}" | xargs -n1 -P "$MAX_JOBS" bash -c 'run_downstream "$@"' _
 
-
 echo "[STEP] Organizing output directories..."
 
 for sample in "${SAMPLES[@]}"; do
@@ -490,7 +386,6 @@ for d in scripts current rnaseq_pipeline_fastq_workflow log; do
     fi
 done
 
-    
     mkdir -p "$OUTPUT_DIR/plots/cancer_mutations/$sample"
     [ -f "$sample_outdir/cosmic_calling/CancerMutationPlot.png" ] && cp "$sample_outdir/cosmic_calling/CancerMutationPlot.png" "$OUTPUT_DIR/plots/cancer_mutations/$sample/"
 
@@ -500,17 +395,6 @@ done
     mkdir -p "$OUTPUT_DIR/plots/mycoplasma_detection/$sample"
     [ -f "$sample_outdir/mycoplasma/mycoplasma_alignment_summary.pdf" ] && cp "$sample_outdir/mycoplasma/mycoplasma_alignment_summary.pdf" "$OUTPUT_DIR/plots/mycoplasma_detection/$sample/"
 
-    # # Organize preprocessing
-    # mkdir -p "$sample_outdir/preprocessing"
-    # for d in \
-    #     variant_calling/Mark_duplicates_outputs \
-    #     variant_calling/RSEM_outputs \
-    #     variant_calling/QC_outputs \
-    #     star_out \
-    #     fastqc_out \
-    #     variant_calling; do
-    #     [ -d "$sample_outdir/$d" ] && mv "$sample_outdir/$d" "$sample_outdir/preprocessing/"
-    # done
 done
 
 mkdir -p "$OUTPUT_DIR/plots/PACNet"
