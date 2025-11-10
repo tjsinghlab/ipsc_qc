@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # =====================================================
 # Mycoplasma contamination detection per RNA-seq sample
-# Includes human genome sanity check alignment
 # =====================================================
 
 set -euo pipefail
