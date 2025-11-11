@@ -2,41 +2,42 @@ version 1.0
 
 task star {
 
-    File fastq1
-    File? fastq2
-    String prefix
-    String star_index
+    input {
+        File fastq1
+        File? fastq2
+        String prefix
+        File star_index
 
-    # STAR options
-    Int? outFilterMultimapNmax
-    Int? alignSJoverhangMin
-    Int? alignSJDBoverhangMin
-    Int? outFilterMismatchNmax
-    Float? outFilterMismatchNoverLmax
-    Int? alignIntronMin
-    Int? alignIntronMax
-    Int? alignMatesGapMax
-    String? outFilterType
-    Float? outFilterScoreMinOverLread
-    Float? outFilterMatchNminOverLread
-    Int? limitSjdbInsertNsj
-    String? outSAMstrandField
-    String? outFilterIntronMotifs
-    String? alignSoftClipAtReferenceEnds
-    String? quantMode
-    String? outSAMattrRGline
-    String? outSAMattributes
-    File? varVCFfile
-    String? waspOutputMode
-    Int? chimSegmentMin
-    Int? chimJunctionOverhangMin
-    String? chimOutType
-    Int? chimMainSegmentMultNmax
-    Int? chimOutJunctionFormat
-    File? sjdbFileChrStartEnd
-    String? quantTranscriptomeSAMoutput
-    Int? winAnchorMultimapNmax
-    String? genomeTransformOutput
+        # STAR options
+        Int? outFilterMultimapNmax
+        Int? alignSJoverhangMin
+        Int? alignSJDBoverhangMin
+        Int? outFilterMismatchNmax
+        Float? outFilterMismatchNoverLmax
+        Int? alignIntronMin
+        Int? alignIntronMax
+        Int? alignMatesGapMax
+        String? outFilterType
+        Float? outFilterScoreMinOverLread
+        Float? outFilterMatchNminOverLread
+        Int? limitSjdbInsertNsj
+        String? outSAMstrandField
+        String? outFilterIntronMotifs
+        String? alignSoftClipAtReferenceEnds
+        String? quantMode
+        String? outSAMattrRGline
+        String? outSAMattributes
+        File? varVCFfile
+        String? waspOutputMode
+        Int? chimSegmentMin
+        Int? chimJunctionOverhangMin
+        String? chimOutType
+        Int? chimMainSegmentMultNmax
+        Int? chimOutJunctionFormat
+        File? sjdbFileChrStartEnd
+        String? quantTranscriptomeSAMoutput
+        Int? winAnchorMultimapNmax
+        String? genomeTransformOutput
 
         String outdir
 
@@ -44,6 +45,7 @@ task star {
         Int disk_space=200
         Int num_threads=8
         Int num_preempt=0
+        }
 
     command {
         set -euo pipefail
@@ -71,9 +73,9 @@ task star {
         echo $fastq2_abs
 
         # extract index
-        echo $(date +"[%b %d %H:%M:%S] Extracting STAR index")
-        mkdir star_index
-        tar -xvvf ${star_index} -C star_index --strip-components=1
+        # echo $(date +"[%b %d %H:%M:%S] Extracting STAR index")
+        # mkdir star_index
+        # tar -xvvf ${star_index} -C star_index --strip-components=1
 
         mkdir -p ${outdir + "/star_out"}
         # placeholders for optional outputs
