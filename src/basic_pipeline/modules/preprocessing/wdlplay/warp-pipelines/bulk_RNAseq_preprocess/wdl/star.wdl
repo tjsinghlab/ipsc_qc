@@ -80,7 +80,7 @@ task star {
         mkdir -p ${outdir + "/star_out"}
         # placeholders for optional outputs
         touch ${outdir + "/star_out"}/${prefix}.Aligned.toTranscriptome.out.bam
-        touch star_out/${prefix}.Chimeric.out.junction.gz
+        # touch star_out/${prefix}.Chimeric.out.junction.gz
         touch ${outdir + "/star_out"}/${prefix}.Chimeric.out.sorted.bam
         touch ${outdir + "/star_out"}/${prefix}.Chimeric.out.sorted.bam.bai
         touch ${outdir + "/star_out"}/${prefix}.ReadsPerGene.out.tab  # run_STAR.py will gzip
