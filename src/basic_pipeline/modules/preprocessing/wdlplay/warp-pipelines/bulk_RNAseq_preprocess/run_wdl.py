@@ -68,7 +68,8 @@ outfile = runner.submit(
     wdl=wdl,
     inputs=inputs,
     server=False,
-    no_deepcopy=False
+    no_deepcopy=False,
+    check_metadata=False
 )
 
 logger.info(f"Workflow submitted. Output: {outfile}")
