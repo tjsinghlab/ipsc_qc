@@ -80,7 +80,7 @@ task star {
         mkdir -p ${outdir + "/star_out"}
         # placeholders for optional outputs
         touch ${outdir + "/star_out"}/${prefix}.Aligned.toTranscriptome.out.bam
-        # touch star_out/${prefix}.Chimeric.out.junction.gz
+        #touch star_out/${prefix}.Chimeric.out.junction.gz
         touch ${outdir + "/star_out"}/${prefix}.Chimeric.out.sorted.bam
         touch ${outdir + "/star_out"}/${prefix}.Chimeric.out.sorted.bam.bai
         touch ${outdir + "/star_out"}/${prefix}.ReadsPerGene.out.tab  # run_STAR.py will gzip
@@ -134,7 +134,7 @@ task star {
     }
 
     runtime {
-        singularity: "/ref/gtex_rnaseq_V10.sif"
+        singularity: "/pipeline/modules/gtex_rnaseq_V10.sif"
         memory: "${memory}GB"
         disks: "local-disk ${disk_space} HDD"
         cpu: "${num_threads}"

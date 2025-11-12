@@ -93,7 +93,7 @@ resources=(
   "KNOWN_VCF2_IDX|Homo_sapiens_assembly38.known_indels.vcf.gz.tbi|wget -O $REF_DIR/Homo_sapiens_assembly38.known_indels.vcf.gz.tbi https://storage.googleapis.com/genomics-public-data/resources/broad/hg38/v0/Homo_sapiens_assembly38.known_indels.vcf.gz.tbi"
 
   "GATK_SIF|gatk_4.6.1.0.sif|singularity pull $REF_DIR/gatk_4.6.1.0.sif library://biocontainers/gatk4:4.6.1.0--py310hdfd78af_0"
-  "GTEX_SIF|gtex_rnaseq_V10.sif|singularity pull $REF_DIR/gtex_rnaseq_V10.sif docker://broadinstitute/gtex_rnaseq:V10"
+  #"GTEX_SIF|gtex_rnaseq_V10.sif|singularity pull $REF_DIR/gtex_rnaseq_V10.sif docker://broadinstitute/gtex_rnaseq:V10"
 
   "GENE_LIST|genes.txt|wget -O $REF_DIR/genes.txt https://raw.githubusercontent.com/tjsinghlab/ipsc_qc/main/src/basic_pipeline/ref_files/genes.txt"
 
@@ -120,7 +120,7 @@ done
 # Special cases: STAR + RSEM need building
 STAR_INDEX=$(resolve_ref "STAR index" "star_index_oh75" \
 "mkdir -p $REF_DIR/star_index_oh75 && \
- singularity exec $REF_DIR/gtex_rnaseq_V10.sif STAR --runMode genomeGenerate \
+ singularity exec /pipeline/modules/gtex_rnaseq_V10.sif STAR --runMode genomeGenerate \
    --genomeDir $REF_DIR/star_index_oh75 \
    --genomeFastaFiles $REF_DIR/Homo_sapiens_assembly38_noALT_noHLA_noDecoy.fasta \
    --sjdbGTFfile $REF_DIR/gencode.v39.GRCh38.annotation.gtf \
@@ -128,7 +128,7 @@ STAR_INDEX=$(resolve_ref "STAR index" "star_index_oh75" \
 
 RSEM_REF=$(resolve_ref "RSEM reference" "rsem_reference" \
 "mkdir -p $REF_DIR/rsem_reference && \
- singularity exec $REF_DIR/gtex_rnaseq_V10.sif rsem-prepare-reference \
+ singularity exec /pipeline/modules/gtex_rnaseq_V10.sif rsem-prepare-reference \
    $REF_DIR/Homo_sapiens_assembly38_noALT_noHLA_noDecoy.fasta \
    $REF_DIR/rsem_reference/rsem_reference \
    --gtf $REF_DIR/gencode.v39.GRCh38.annotation.gtf \

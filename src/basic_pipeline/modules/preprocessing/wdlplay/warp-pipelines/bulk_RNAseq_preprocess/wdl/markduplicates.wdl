@@ -36,7 +36,7 @@ task markduplicates {
     }
 
     runtime {
-        singularity: "/ref/gtex_rnaseq_V10.sif"
+        singularity: "/pipeline/modules/gtex_rnaseq_V10.sif"
         memory: "${memory}GB"
         disks: "local-disk ${disk_space} HDD"
         cpu: "${num_threads}"
