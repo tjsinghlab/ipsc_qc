@@ -92,7 +92,7 @@ resources=(
   "KNOWN_VCF1_IDX|Mills_and_1000G_gold_standard.indels.hg38.vcf.gz.tbi|wget -O $REF_DIR/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz.tbi https://storage.googleapis.com/genomics-public-data/resources/broad/hg38/v0/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz.tbi"
   "KNOWN_VCF2_IDX|Homo_sapiens_assembly38.known_indels.vcf.gz.tbi|wget -O $REF_DIR/Homo_sapiens_assembly38.known_indels.vcf.gz.tbi https://storage.googleapis.com/genomics-public-data/resources/broad/hg38/v0/Homo_sapiens_assembly38.known_indels.vcf.gz.tbi"
 
-  "GATK_SIF|gatk_4.6.1.0.sif|singularity pull $REF_DIR/gatk_4.6.1.0.sif library://biocontainers/gatk4:4.6.1.0--py310hdfd78af_0"
+  #"GATK_SIF|gatk_4.6.1.0.sif|singularity pull $REF_DIR/gatk_4.6.1.0.sif library://biocontainers/gatk4:4.6.1.0--py310hdfd78af_0"
   #"GTEX_SIF|gtex_rnaseq_V10.sif|singularity pull $REF_DIR/gtex_rnaseq_V10.sif docker://broadinstitute/gtex_rnaseq:V10"
 
   "GENE_LIST|genes.txt|wget -O $REF_DIR/genes.txt https://raw.githubusercontent.com/tjsinghlab/ipsc_qc/main/src/basic_pipeline/ref_files/genes.txt"
@@ -207,10 +207,27 @@ run_sample() {
         echo "[SKIP] Variant calling already complete for $sample"
     else
         echo "[RUN] Running variant calling for $sample..."
+        VC_LOG="$LOG_DIR/${sample}_wdl2.log"
         python3 "$PY_RUNNER2" \
             --output_dir "$sample_outdir" \
             --sample "$sample" \
-            > "$LOG_DIR/${sample}_wdl2.log" 2>&1
+            > "$VC_LOG" 2>&1
+        WF_ID=$(grep -oE 'workflow ([a-f0-9\-]+)' "$VC_LOG" | awk '{print $2}')
+
+        if [[ -z "$WF_ID" ]]; then
+            echo "[ERROR] Could not find Caper workflow ID for $sample"
+            exit 1
+        fi
+
+        echo "[INFO] Waiting for Caper workflow $WF_ID for $sample to finish..."
+        while true; do
+            STATUS=$(caper metadata "$WF_ID" 2>/dev/null | jq -r '.status')
+            if [[ "$STATUS" == "Succeeded" ]]; then
+                echo "[DONE] Workflow $WF_ID completed for $sample"
+                break
+            fi
+            sleep 60
+        done
     fi
 
     echo "[DONE] Preprocessing and variant calling for sample $sample completed."
@@ -262,8 +279,8 @@ get_total_cores() {
     echo "$cores"
 }
 
-# Each sample needs ~100 GB
-MEM_PER_SAMPLE=100
+# Each sample needs ~64 GB to be safe
+MEM_PER_SAMPLE=64
 
 TOTAL_MEM_GB=$(get_total_memory_gb)
 TOTAL_CORES=$(get_total_cores)
@@ -286,7 +303,7 @@ export OUTPUT_DIR FASTQ_DIR LOG_DIR PY_RUNNER1 PY_RUNNER2 REF_DIR COSMIC_DIR
 printf '%s\n' "${SAMPLES[@]}" | xargs -n1 -P "$MAX_JOBS" bash -c 'run_sample "$@"' _
 
 # ===========================================
-# Phase 2: Run PACNet + downstream scripts
+# Step: Run PACNet + downstream scripts
 # ===========================================
 echo "[STEP] Running PACNet..."
 Rscript /pipeline/modules/PACNet/run_pacnet.R \
@@ -324,7 +341,7 @@ run_downstream() {
     fi
 
     # -------------------------------------------------
-    # Step 1: Mycoplasma detection
+    # Step: Mycoplasma detection
     # -------------------------------------------------
     echo "[STEP] Mycoplasma detection for $sample..."
     bash /pipeline/modules/mycoplasma_detection/detect_mycoplasma.sh \
@@ -336,7 +353,7 @@ run_downstream() {
         > "$LOG_DIR/mycoplasma_${sample}.log" 2>&1
 
     # -------------------------------------------------
-    # Step 2: COSMIC mutation calling (if provided)
+    # Step: COSMIC mutation calling (if provided)
     # -------------------------------------------------
     if [[ -n "${COSMIC_DIR:-}" ]]; then
         echo "[STEP] COSMIC mutation calling for $sample..."
@@ -351,7 +368,7 @@ run_downstream() {
     fi
 
     # -------------------------------------------------
-    # Step 3: eSNPKaryotyping
+    # Step: eSNPKaryotyping
     # -------------------------------------------------
     echo "[STEP] eSNPKaryotyping for $sample..."
     Rscript /pipeline/modules/eSNPKaryotyping/run_eSNPKaryotyping.R \
