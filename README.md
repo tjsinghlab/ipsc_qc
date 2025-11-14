@@ -7,7 +7,7 @@ This pipeline includes:
 - GATK germline variant calling
 - Cancer mutation calling (in select oncogenes)
 - eSNPKaryotyping
-- Mycoplasma detection (*Mycoplasma fermentans* and *Mycoplasma orale*)
+- Mycoplasma detection (*Mycoplasma fermentans* and *Mycoplasma orale* and *Mycoplasma hyorhinis*)
 - PACNet classification
 - Outlier assessment
   
@@ -85,8 +85,6 @@ singularity exec \
   *knownVcfIndex 2*
 - `gencode.v39.GRCh38.genes.collapsed_only.gtf`
   *annotationsGTF*
-- `images/gatk_4.6.1.0.sif`
-  *gatk4_docker image*
 - `GCF_000420105.1_ASM42010v1_genomic.fna.gz`  
   *Mycoplasma orale genome; downloaded from `wget https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/420/105/GCF_000420105.1_ASM42010v1/GCF_000420105.1_ASM42010v1_genomic.fna.gz`*
 - `GCF_003704055.1_ASM370405v1_genomic.fna.gz`
@@ -204,7 +202,6 @@ output_dir
   │    │   ├── sample_01.aligned.duplicates_marked.recalibrated.bam
   │    │   └── sample_01.aligned.duplicates_marked.recalibrated.bam.bai
   └── sample_02
-  
 
 
 ```
@@ -213,64 +210,61 @@ output_dir
 ### Basic pipeline repo structure
 ```
 src
-  ├── basic_pipeline
-       ├── docker_image_structure
-       ├── docker-compose.yaml
-       ├── Dockerfile_slim
-       ├── modules
-       │   ├── cancer_mutation_calling
-       │   │   └── COSMIC_cancer_mutation_calling.r
-       │   ├── eSNPKaryotyping
-       │   │   └── run_eSNPKaryotyping.R
-       │   ├── mycoplasma_detection
-       │   │   └── detect_mycoplasma.sh
-       │   ├── outlier_detection
-       │   │   └── outlier_detection.R
-       │   ├── PACNet
-       │   │   └── run_pacnet.R
-       │   └── preprocessing
-       │       └── wdlplay
-       │           ├── LICENSE.md
-       │           ├── Makefile
-       │           ├── MANIFEST.in
-       │           ├── README.md
-       │           ├── requirements.txt
-       │           ├── settings.json
-       │           ├── setup.cfg
-       │           ├── setup.py
-       │           ├── versioneer.py
-       │           ├── warp-pipelines
-       │           │   ├── bulk_RNAseq_preprocess
-       │           │   │   ├── RNAseq_pipeline_fastq.wdl
-       │           │   │   ├── run_wdl.py
-       │           │   │   └── wdl
-       │           │   │       ├── fastqc.wdl
-       │           │   │       ├── markduplicates.wdl
-       │           │   │       ├── rnaseqc2.wdl
-       │           │   │       ├── rsem.wdl
-       │           │   │       └── star.wdl
-       │           │   └── GATK_variant_calling
-       │           │       ├── gatk4-rna-best-practices.wdl
-       │           │       ├── gatk4-rna-germline-calling_run.py
-       │           │       └── gatk4-rna-germline-variant-calling.inputs.json
-       │           └── wdlplay
-       │               ├── __init__.py
-       │               ├── _version.py
-       │               ├── db.json
-       │               └── wdlplayer.py
-       ├── pipeline_runner.sh
-       ├── README.md
-       ├── ref_files
-       │   └── genes.txt
-       ├── report_builder.R
-       └── tarballs
-           └── CellNet_master.tar.gz
+    └── basic_pipeline
+        ├── Dockerfile_ipsc_qc
+        ├── modules
+        │   ├── cancer_mutation_calling
+        │   │   └── COSMIC_cancer_mutation_calling.r
+        │   ├── eSNPKaryotyping
+        │   │   └── run_eSNPKaryotyping.R
+        │   ├── mycoplasma_detection
+        │   │   └── detect_mycoplasma.sh
+        │   ├── outlier_detection
+        │   │   └── outlier_detection.R
+        │   ├── PACNet
+        │   │   └── run_pacnet.R
+        │   └── preprocessing
+        │       └── wdlplay
+        │           ├── LICENSE.md
+        │           ├── Makefile
+        │           ├── MANIFEST.in
+        │           ├── README.md
+        │           ├── requirements.txt
+        │           ├── settings.json
+        │           ├── setup.cfg
+        │           ├── setup.py
+        │           ├── versioneer.py
+        │           ├── warp-pipelines
+        │           │   ├── bulk_RNAseq_preprocess
+        │           │   │   ├── RNAseq_pipeline_fastq.wdl
+        │           │   │   ├── run_wdl.py
+        │           │   │   └── wdl
+        │           │   │       ├── fastqc.wdl
+        │           │   │       ├── markduplicates.wdl
+        │           │   │       ├── rnaseqc2.wdl
+        │           │   │       ├── rsem.wdl
+        │           │   │       └── star.wdl
+        │           │   └── GATK_variant_calling
+        │           │       ├── gatk4-rna-best-practices.wdl
+        │           │       ├── gatk4-rna-germline-calling_run.py
+        │           │       └── gatk4-rna-germline-variant-calling.inputs.json
+        │           └── wdlplay
+        │               ├── __init__.py
+        │               ├── _version.py
+        │               ├── db.json
+        │               └── wdlplayer.py
+        ├── pipeline_runner.sh
+        ├── ref_files
+        │   └── genes.txt
+        ├── report_builder.R
+        └── tarballs
+            └── CellNet_master.tar.gz
 ```
 ---
 
 ## Notes
 - This pipeline is memory-intensive. Implementation on HPC is recommended.
-- WDL scripts will utilize cromwell, but a caper server will not be started. Backend is local. All packages and scripts are contained within the image; user does not need to install anything beyond what is included in the [requirements](#requirements) section.
+- WDL scripts will utilize cromwell, but a caper server will not be started. Backend is local. All packages (including caper) and scripts are contained within the image; user does not need to install anything beyond what is included in the [requirements](#requirements) section.
 
 ---
 
