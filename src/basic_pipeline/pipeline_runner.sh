@@ -205,31 +205,15 @@ run_sample() {
     if [ -d "$sample_outdir/variant_calling" ] && \
        compgen -G "$sample_outdir/variant_calling/*.vcf.gz" > /dev/null; then
         echo "[SKIP] Variant calling already complete for $sample"
-    else
-        echo "[RUN] Running variant calling for $sample..."
-        VC_LOG="$LOG_DIR/${sample}_wdl2.log"
+        
+    else 
+        echo "[RUN] Running variant calling for $sample..." 
+
         python3 "$PY_RUNNER2" \
             --output_dir "$sample_outdir" \
             --sample "$sample" \
-            > "$VC_LOG" 2>&1
-        WF_ID=$(grep -oE 'workflow ([a-f0-9\-]+)' "$VC_LOG" | awk '{print $2}')
-
-        if [[ -z "$WF_ID" ]]; then
-            echo "[ERROR] Could not find Caper workflow ID for $sample"
-            exit 1
-        fi
-
-        echo "[INFO] Waiting for Caper workflow $WF_ID for $sample to finish..."
-        while true; do
-            STATUS=$(caper metadata "$WF_ID" 2>/dev/null | jq -r '.status')
-            if [[ "$STATUS" == "Succeeded" ]]; then
-                echo "[DONE] Workflow $WF_ID completed for $sample"
-                break
-            fi
-            sleep 60
-        done
+            > "$LOG_DIR/${sample}_wdl2.log" 2>&1
     fi
-
     echo "[DONE] Preprocessing and variant calling for sample $sample completed."
 }
 
@@ -419,5 +403,103 @@ mkdir -p "$OUTPUT_DIR/plots/PACNet"
 
 mkdir -p "$OUTPUT_DIR/plots/outlier_analysis"
 [ -f "$OUTPUT_DIR/outlier_analysis/PCA_pacnet_scores.pdf" ] && cp "$OUTPUT_DIR/outlier_analysis/PCA_pacnet_scores.pdf" "$OUTPUT_DIR/plots/outlier_analysis/"
+[ -f "$OUTPUT_DIR/outlier_analysis/PCA_counts.pdf" ] && cp "$OUTPUT_DIR/outlier_analysis/PCA_counts.pdf" "$OUTPUT_DIR/plots/outlier_analysis/"
+
+#############################################
+########## Construct summary table ##########
+#############################################
+echo "[STEP] Constructing summary table..."
+
+SUMMARY_FILE="$OUTPUT_DIR/final_summary_table.tsv"
+PACNET_FILE="$OUTPUT_DIR/pacnet/classification_scores.csv"
+
+# ----------------------------
+# Write header
+# ----------------------------
+echo -e "Sample\tTotal_Mycoplasma_Percent_Alignment\tFraction_Abnormal_Karyotype\tesc_score\tTP53_Frame_Mutations\tTP53_Total_Mutations\tEGFR_Frame_Mutations\tEGFR_Total_Mutations\tBRCA1_Frame_Mutations\tBRCA1_Total_Mutations" > "$SUMMARY_FILE"
+
+# ----------------------------
+# Iterate over samples
+# ----------------------------
+for sample in "${SAMPLES[@]}"; do
+    sample_dir="$OUTPUT_DIR/$sample"
+
+    ### ----------------------
+    ### Mycoplasma %
+    ### ----------------------
+    myco_file="$sample_dir/mycoplasma/mycoplasma_alignment_stats.tsv"
+    myco_pct="NA"
+    if [ -f "$myco_file" ]; then
+        myco_pct=$(awk 'NR>1 {sum+=$5} END {if(NR>1) print sum; else print "NA"}' "$myco_file")
+    fi
+
+    ### ----------------------
+    ### Fraction abnormal karyotype
+    ### ----------------------
+    karyo_file="$sample_dir/eSNPKaryotyping/${sample}_variantTable.csv"
+    frac_karyo="NA"
+    if [ -f "$karyo_file" ]; then
+        frac_karyo=$(awk -F',' '
+            NR>1 {
+                total++;
+                if($6 != 10 && $6 != "10") abnormal++;
+            }
+            END {
+                if(total>0) printf("%.6f", abnormal/total);
+                else print "NA";
+            }' "$karyo_file")
+    fi
+
+    ### ----------------------
+    ### PACNet esc score
+    ### ----------------------
+    esc_score="NA"
+    if [ -f "$PACNET_FILE" ]; then
+        esc_score=$(awk -v s="$sample" -F',' '
+            NR==1 {
+                for(i=1;i<=NF;i++) if($i==s) col=i
+            }
+            $1=="esc" {
+                if(col!="") print $col; else print "NA"
+            }
+        ' "$PACNET_FILE")
+    fi
+
+    ### ----------------------
+    ### COSMIC Mutations
+    ### ----------------------
+    cosmic_file="$sample_dir/cosmic_calling/${sample}_CancerMutations.tsv"
+
+    tp53_frame=0; tp53_total=0
+    egfr_frame=0; egfr_total=0
+    brca1_frame=0; brca1_total=0
+
+    if [ -f "$cosmic_file" ]; then
+        tail -n +2 "$cosmic_file" | while IFS=$'\t' read -r gene desc; do
+            case "$gene" in
+                TP53)
+                    ((tp53_total++))
+                    [[ "$desc" == *frame* ]] && ((tp53_frame++))
+                    ;;
+                EGFR)
+                    ((egfr_total++))
+                    [[ "$desc" == *frame* ]] && ((egfr_frame++))
+                    ;;
+                BRCA1)
+                    ((brca1_total++))
+                    [[ "$desc" == *frame* ]] && ((brca1_frame++))
+                    ;;
+            esac
+        done
+    fi
+
+    ### ----------------------
+    ### Write row
+    ### ----------------------
+    echo -e "${sample}\t${myco_pct}\t${frac_karyo}\t${esc_score}\t${tp53_frame}\t${tp53_total}\t${egfr_frame}\t${egfr_total}\t${brca1_frame}\t${brca1_total}" >> "$SUMMARY_FILE"
+
+done
+
+echo "[INFO] Summary table written to $SUMMARY_FILE"
 
 echo "[INFO] Pipeline completed. Results in $OUTPUT_DIR"
