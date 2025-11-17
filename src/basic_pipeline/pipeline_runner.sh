@@ -455,42 +455,82 @@ for sample in "${SAMPLES[@]}"; do
     ### ----------------------
     esc_score="NA"
     if [ -f "$PACNET_FILE" ]; then
-        esc_score=$(awk -v s="$sample" -F',' '
-            NR==1 {
-                for(i=1;i<=NF;i++) if($i==s) col=i
+        esc_score=$(awk -v target="$sample" -F',' '
+            function clean(x){
+                gsub(/^[ \t]+|[ \t]+$/, "", x)
+                gsub(/\r/, "", x)
+                return x
             }
-            $1=="esc" {
-                if(col!="") print $col; else print "NA"
+
+            BEGIN {
+                target = clean(target)
+            }
+
+            NR==1 {
+                # Column 1 is unlabeled; real sample headers begin at column 2
+                for (i=2; i<=NF; i++) {
+                    colname = clean($i)
+                    if (colname == target) {
+                        col = i
+                    }
+                }
+                next
+            }
+
+            {
+                # Row labels (esc, pluri, etc.) live in column 1
+                row = tolower(clean($1))
+
+                if (row == "esc") {
+                    if (col > 0) {
+                        val = clean($col)
+                        print val
+                    } else {
+                        print "NA"
+                    }
+                    exit
+                }
             }
         ' "$PACNET_FILE")
     fi
 
-    ### ----------------------
+
+   ### ----------------------
     ### COSMIC Mutations
     ### ----------------------
-    cosmic_file="$sample_dir/cosmic_calling/${sample}_CancerMutations.tsv"
+    cosmic_file="$sample_dir/cosmic_calling/${sample}_CancerMutations_summary.tsv"
 
     tp53_frame=0; tp53_total=0
     egfr_frame=0; egfr_total=0
     brca1_frame=0; brca1_total=0
 
     if [ -f "$cosmic_file" ]; then
-        tail -n +2 "$cosmic_file" | while IFS=$'\t' read -r gene desc; do
-            case "$gene" in
-                TP53)
-                    ((tp53_total++))
-                    [[ "$desc" == *frame* ]] && ((tp53_frame++))
-                    ;;
-                EGFR)
-                    ((egfr_total++))
-                    [[ "$desc" == *frame* ]] && ((egfr_frame++))
-                    ;;
-                BRCA1)
-                    ((brca1_total++))
-                    [[ "$desc" == *frame* ]] && ((brca1_frame++))
-                    ;;
-            esac
-        done
+        tail -n +2 "$cosmic_file" | \
+        awk -F'\t' '
+            {
+                gene=$1
+                count=$2
+                desc=tolower($3)
+
+                if (gene=="TP53") {
+                    tp53_total += count
+                    if (desc ~ /frame/) tp53_frame += count
+                }
+                if (gene=="EGFR") {
+                    egfr_total += count
+                    if (desc ~ /frame/) egfr_frame += count
+                }
+                if (gene=="BRCA1") {
+                    brca1_total += count
+                    if (desc ~ /frame/) brca1_frame += count
+                }
+            }
+            END {
+                print tp53_frame, tp53_total, egfr_frame, egfr_total, brca1_frame, brca1_total
+            }
+        ' OFS='\t' | {
+            read tp53_frame tp53_total egfr_frame egfr_total brca1_frame brca1_total
+        }
     fi
 
     ### ----------------------
