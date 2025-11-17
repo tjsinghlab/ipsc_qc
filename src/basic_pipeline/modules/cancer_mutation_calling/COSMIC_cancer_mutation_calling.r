@@ -165,6 +165,8 @@ df_plot <- df_plot %>%
   group_by(GENE_SYMBOL, MUTATION_DESCRIPTION) %>%
   summarise(unique_pos_count = n_distinct(POS), .groups = "drop")
 
+write.csv(df_plot, file.path(output_dir, paste0(sample_id, "_CancerMutations_summary.tsv")), sep = "\t", row.names = FALSE)
+
 plotty <- ggplot(df_plot, aes(
   x = GENE_SYMBOL,
   y = unique_pos_count,
