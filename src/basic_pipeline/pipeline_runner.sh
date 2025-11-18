@@ -405,141 +405,14 @@ mkdir -p "$OUTPUT_DIR/plots/outlier_analysis"
 [ -f "$OUTPUT_DIR/outlier_analysis/PCA_pacnet_scores.pdf" ] && cp "$OUTPUT_DIR/outlier_analysis/PCA_pacnet_scores.pdf" "$OUTPUT_DIR/plots/outlier_analysis/"
 [ -f "$OUTPUT_DIR/outlier_analysis/PCA_counts.pdf" ] && cp "$OUTPUT_DIR/outlier_analysis/PCA_counts.pdf" "$OUTPUT_DIR/plots/outlier_analysis/"
 
-#############################################
-########## Construct summary table ##########
-#############################################
-echo "[STEP] Constructing summary table..."
+##Construct summary table
+echo "[STEP] Writing summary table..."
+Rscript /pipeline/modules/summary_writer.R \
+    --output_dir "$OUTPUT_DIR" \
+    --pacnet_file "$OUTPUT_DIR/pacnet/classification_scores.csv" \
+    --samples "$(IFS=,; echo "${SAMPLES[*]}")" \
+    --project "$PROJECT"
 
-SUMMARY_FILE="$OUTPUT_DIR/final_summary_table.tsv"
-PACNET_FILE="$OUTPUT_DIR/pacnet/classification_scores.csv"
-
-# ----------------------------
-# Write header
-# ----------------------------
-echo -e "Sample\tTotal_Mycoplasma_Percent_Alignment\tFraction_Abnormal_Karyotype\tesc_score\tTP53_Frame_Mutations\tTP53_Total_Mutations\tEGFR_Frame_Mutations\tEGFR_Total_Mutations\tBRCA1_Frame_Mutations\tBRCA1_Total_Mutations" > "$SUMMARY_FILE"
-
-# ----------------------------
-# Iterate over samples
-# ----------------------------
-for sample in "${SAMPLES[@]}"; do
-    sample_dir="$OUTPUT_DIR/$sample"
-
-    ### ----------------------
-    ### Mycoplasma %
-    ### ----------------------
-    myco_file="$sample_dir/mycoplasma/mycoplasma_alignment_stats.tsv"
-    myco_pct="NA"
-    if [ -f "$myco_file" ]; then
-        myco_pct=$(awk 'NR>1 {sum+=$5} END {if(NR>1) print sum; else print "NA"}' "$myco_file")
-    fi
-
-    ### ----------------------
-    ### Fraction abnormal karyotype
-    ### ----------------------
-    karyo_file="$sample_dir/eSNPKaryotyping/${sample}_variantTable.csv"
-    frac_karyo="NA"
-    if [ -f "$karyo_file" ]; then
-        frac_karyo=$(awk -F',' '
-            NR>1 {
-                total++;
-                if($6 != 10 && $6 != "10") abnormal++;
-            }
-            END {
-                if(total>0) printf("%.6f", abnormal/total);
-                else print "NA";
-            }' "$karyo_file")
-    fi
-
-    ### ----------------------
-    ### PACNet esc score
-    ### ----------------------
-    esc_score="NA"
-    if [ -f "$PACNET_FILE" ]; then
-        esc_score=$(awk -v target="$sample" -F',' '
-            function clean(x){
-                gsub(/^[ \t]+|[ \t]+$/, "", x)
-                gsub(/\r/, "", x)
-                return x
-            }
-
-            BEGIN {
-                target = clean(target)
-            }
-
-            NR==1 {
-                # Column 1 is unlabeled; real sample headers begin at column 2
-                for (i=2; i<=NF; i++) {
-                    colname = clean($i)
-                    if (colname == target) {
-                        col = i
-                    }
-                }
-                next
-            }
-
-            {
-                # Row labels (esc, pluri, etc.) live in column 1
-                row = tolower(clean($1))
-
-                if (row == "esc") {
-                    if (col > 0) {
-                        val = clean($col)
-                        print val
-                    } else {
-                        print "NA"
-                    }
-                    exit
-                }
-            }
-        ' "$PACNET_FILE")
-    fi
-
-
-   ### ----------------------
-    ### COSMIC Mutations
-    ### ----------------------
-    cosmic_file="$sample_dir/cosmic_calling/${sample}_CancerMutations_summary.tsv"
-
-    tp53_frame=0; tp53_total=0
-    egfr_frame=0; egfr_total=0
-    brca1_frame=0; brca1_total=0
-
-    if [ -f "$cosmic_file" ]; then
-        tail -n +2 "$cosmic_file" | \
-        awk -F'\t' '
-            {
-                gene=$1
-                count=$2
-                desc=tolower($3)
-
-                if (gene=="TP53") {
-                    tp53_total += count
-                    if (desc ~ /frame/) tp53_frame += count
-                }
-                if (gene=="EGFR") {
-                    egfr_total += count
-                    if (desc ~ /frame/) egfr_frame += count
-                }
-                if (gene=="BRCA1") {
-                    brca1_total += count
-                    if (desc ~ /frame/) brca1_frame += count
-                }
-            }
-            END {
-                print tp53_frame, tp53_total, egfr_frame, egfr_total, brca1_frame, brca1_total
-            }
-        ' OFS='\t' | {
-            read tp53_frame tp53_total egfr_frame egfr_total brca1_frame brca1_total
-        }
-    fi
-
-    ### ----------------------
-    ### Write row
-    ### ----------------------
-    echo -e "${sample}\t${myco_pct}\t${frac_karyo}\t${esc_score}\t${tp53_frame}\t${tp53_total}\t${egfr_frame}\t${egfr_total}\t${brca1_frame}\t${brca1_total}" >> "$SUMMARY_FILE"
-
-done
-
-echo "[INFO] Summary table written to $SUMMARY_FILE"
+echo "[INFO] Summary written to $SUMMARY_FILE"
 
 echo "[INFO] Pipeline completed. Results in $OUTPUT_DIR"
