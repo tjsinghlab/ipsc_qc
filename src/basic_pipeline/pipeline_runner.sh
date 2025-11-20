@@ -286,6 +286,14 @@ export OUTPUT_DIR FASTQ_DIR LOG_DIR PY_RUNNER1 PY_RUNNER2 REF_DIR COSMIC_DIR
 # Run samples in parallel with smart throttling
 printf '%s\n' "${SAMPLES[@]}" | xargs -n1 -P "$MAX_JOBS" bash -c 'run_sample "$@"' _
 
+rm -f "$OUTPUT_DIR"/RNAseq/*/call-SplitNCigarReads/execution/*.bam
+rm -f "$OUTPUT_DIR"/RNAseq/*/call-SplitNCigarReads/execution/*.bai
+rm -f -r "$OUTPUT_DIR"/RNAseq/*/call-ScatterIntervalList/execution/out/
+rm -f -r "$OUTPUT_DIR"/RNAseq/*/call-HaplotypeCaller/shard-*
+rm -f "$OUTPUT_DIR"/RNAseq/*/call-AddReadGroups/execution/*.bam
+rm -f "$OUTPUT_DIR"/RNAseq/*/call-AddReadGroups/execution/*.bai
+
+
 # ===========================================
 # Step: Run PACNet + downstream scripts
 # ===========================================
