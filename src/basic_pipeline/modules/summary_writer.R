@@ -21,10 +21,10 @@ option_list <- list(
 )
 
 opt <- parse_args(OptionParser(option_list=option_list))
-OUTPUT_DIR <- "/gpfs/commons/groups/singh_lab/users/kjakubiak/ipsc/pipeline_test/my_outputs/new_image_test" #opt$output_dir
-PACNET_FILE <- "/gpfs/commons/groups/singh_lab/users/kjakubiak/ipsc/pipeline_test/my_outputs/new_image_test/pacnet/classification_scores.csv"  #opt$pacnet_file
-#SAMPLES <- strsplit(opt$samples, ",")[[1]]
-SAMPLES<-c("24246R-06-01_S0_L001", "24246R-06-08_S415_L008", "24246R-06-11_S198_L008")
+OUTPUT_DIR <- opt$output_dir
+PACNET_FILE <- opt$pacnet_file
+SAMPLES <- strsplit(opt$samples, ",")[[1]]
+#SAMPLES<-c("24246R-06-01_S0_L001", "24246R-06-08_S415_L008", "24246R-06-11_S198_L008")
 
 # -------------------------------------------
 # Discover all genes across all samples
