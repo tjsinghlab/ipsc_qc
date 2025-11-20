@@ -223,7 +223,7 @@ run_sample() {
     rm -f "$sample_outdir"/RNAseq/*/call-AddReadGroups/execution/*.bai
     rm -f "$sample_outdir"/star_out/*.bai
     rm -f "$sample_outdir"/star_out/*.bam
-    
+
     echo "[DONE] Preprocessing and variant calling for sample $sample completed."
 }
 
@@ -340,39 +340,54 @@ run_downstream() {
     # -------------------------------------------------
     # Step: Mycoplasma detection
     # -------------------------------------------------
-    echo "[STEP] Mycoplasma detection for $sample..."
-    bash /pipeline/modules/mycoplasma_detection/detect_mycoplasma.sh \
-        --fastq1 "$fq1" \
-        --fastq2 "$fq2" \
-        --ref_dir "$REF_DIR" \
-        --output_dir "$sample_outdir" \
-        --sample "$sample" \
-        > "$LOG_DIR/mycoplasma_${sample}.log" 2>&1
+    local myco_stats="$sample_outdir/mycoplasma/mycoplasma_alignment_stats.tsv"
+    if [[ ! -f "$myco_stats" ]]; then
+        echo "[STEP] Mycoplasma detection for $sample..."
+        bash /pipeline/modules/mycoplasma_detection/detect_mycoplasma.sh \
+            --fastq1 "$fq1" \
+            --fastq2 "$fq2" \
+            --ref_dir "$REF_DIR" \
+            --output_dir "$sample_outdir" \
+            --sample "$sample" \
+            > "$LOG_DIR/mycoplasma_${sample}.log" 2>&1
+    else
+        echo "[SKIP] Mycoplasma stats exist; skipping for $sample"
+    fi
 
     # -------------------------------------------------
     # Step: COSMIC mutation calling (if provided)
     # -------------------------------------------------
+    local cosmic_plot="$sample_outdir/cosmic_calling/CancerMutationPlot.png"
     if [[ -n "${COSMIC_DIR:-}" ]]; then
-        echo "[STEP] COSMIC mutation calling for $sample..."
-        Rscript /pipeline/modules/cancer_mutation_calling/COSMIC_cancer_mutation_calling.r \
-            --ref_dir "$REF_DIR" \
-            --cosmic_dir "$COSMIC_DIR" \
-            --output_dir "$sample_outdir" \
-            --sample "$sample" \
-            > "$LOG_DIR/cancer_mutation_mapping_${sample}.log" 2>&1
+        if [[ ! -f "$cosmic_plot" ]]; then
+            echo "[STEP] COSMIC mutation calling for $sample..."
+            Rscript /pipeline/modules/cancer_mutation_calling/COSMIC_cancer_mutation_calling.r \
+                --ref_dir "$REF_DIR" \
+                --cosmic_dir "$COSMIC_DIR" \
+                --output_dir "$sample_outdir" \
+                --sample "$sample" \
+                > "$LOG_DIR/cancer_mutation_mapping_${sample}.log" 2>&1
+        else
+            echo "[SKIP] COSMIC plot exists; skipping for $sample"
+        fi
     else
-        echo "[SKIP] COSMIC_DIR not provided; skipping COSMIC mutation calling for $sample"
+        echo "[SKIP] COSMIC_DIR not provided; skipping COSMIC mutation calling"
     fi
 
     # -------------------------------------------------
     # Step: eSNPKaryotyping
     # -------------------------------------------------
-    echo "[STEP] eSNPKaryotyping for $sample..."
-    Rscript /pipeline/modules/eSNPKaryotyping/run_eSNPKaryotyping.R \
-        --ref_dir "$REF_DIR" \
-        --output_dir "$sample_outdir" \
-        --sample "$sample" \
-        > "$LOG_DIR/ekaryo_${sample}.log" 2>&1
+    local ekaryo_variants=( "$sample_outdir"/eSNPKaryotyping/*_variantTable.csv )
+    if [[ ! -f "${ekaryo_variants[0]}" ]]; then
+        echo "[STEP] eSNPKaryotyping for $sample..."
+        Rscript /pipeline/modules/eSNPKaryotyping/run_eSNPKaryotyping.R \
+            --ref_dir "$REF_DIR" \
+            --output_dir "$sample_outdir" \
+            --sample "$sample" \
+            > "$LOG_DIR/ekaryo_${sample}.log" 2>&1
+    else
+        echo "[SKIP] eSNPKaryotyping variant table exists; skipping for $sample"
+    fi
 
     echo "[DONE] Finished downstream analyses for $sample"
 }
