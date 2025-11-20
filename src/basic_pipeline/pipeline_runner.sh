@@ -441,6 +441,6 @@ Rscript /pipeline/modules/summary_writer.R \
     --samples "$(IFS=,; echo "${SAMPLES[*]}")" \
     --project "$PROJECT"
 
-echo "[INFO] Summary written to $SUMMARY_FILE"
+echo "[INFO] Summary files written."
 
 echo "[INFO] Pipeline completed. Results in $OUTPUT_DIR"
