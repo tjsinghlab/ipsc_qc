@@ -214,6 +214,16 @@ run_sample() {
             --sample "$sample" \
             > "$LOG_DIR/${sample}_wdl2.log" 2>&1
     fi
+
+    rm -f "$sample_outdir"/RNAseq/*/call-SplitNCigarReads/execution/*.bam
+    rm -f "$sample_outdir"/RNAseq/*/call-SplitNCigarReads/execution/*.bai
+    rm -f -r "$sample_outdir"/RNAseq/*/call-ScatterIntervalList/execution/out/
+    rm -f -r "$sample_outdir"/RNAseq/*/call-HaplotypeCaller/shard-*
+    rm -f "$sample_outdir"/RNAseq/*/call-AddReadGroups/execution/*.bam
+    rm -f "$sample_outdir"/RNAseq/*/call-AddReadGroups/execution/*.bai
+    rm -f "$sample_outdir"/star_out/*.bai
+    rm -f "$sample_outdir"/star_out/*.bam
+    
     echo "[DONE] Preprocessing and variant calling for sample $sample completed."
 }
 
@@ -286,12 +296,7 @@ export OUTPUT_DIR FASTQ_DIR LOG_DIR PY_RUNNER1 PY_RUNNER2 REF_DIR COSMIC_DIR
 # Run samples in parallel with smart throttling
 printf '%s\n' "${SAMPLES[@]}" | xargs -n1 -P "$MAX_JOBS" bash -c 'run_sample "$@"' _
 
-rm -f "$OUTPUT_DIR"/RNAseq/*/call-SplitNCigarReads/execution/*.bam
-rm -f "$OUTPUT_DIR"/RNAseq/*/call-SplitNCigarReads/execution/*.bai
-rm -f -r "$OUTPUT_DIR"/RNAseq/*/call-ScatterIntervalList/execution/out/
-rm -f -r "$OUTPUT_DIR"/RNAseq/*/call-HaplotypeCaller/shard-*
-rm -f "$OUTPUT_DIR"/RNAseq/*/call-AddReadGroups/execution/*.bam
-rm -f "$OUTPUT_DIR"/RNAseq/*/call-AddReadGroups/execution/*.bai
+
 
 
 # ===========================================
