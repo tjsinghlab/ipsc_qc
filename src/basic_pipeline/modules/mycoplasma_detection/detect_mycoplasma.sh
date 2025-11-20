@@ -122,6 +122,8 @@ for species in "${!GENOMES[@]}"; do
     echo -e "${SAMPLE}\t${species}\t${TOTAL_READS}\t${MAPPED_READS}\t${PERCENT_ALIGNED}" >> "$ALIGN_STATS_FILE"
 done
 
+rm -f "${SAMPLE_OUT}"/*.bt2 "${SAMPLE_OUT}"/*.fna "${SAMPLE_OUT}"/*.bam "${SAMPLE_OUT}"/*.bai
+
 # -------------------------------
 # Visualization (R)
 # -------------------------------
@@ -169,6 +171,7 @@ EOF
 # -------------------------------
 # Done!
 # -------------------------------
+
 echo "[INFO] Mycoplasma detection complete for $SAMPLE"
 echo "[INFO] Alignment stats: $ALIGN_STATS_FILE"
 echo "[INFO] Plots saved to:"
