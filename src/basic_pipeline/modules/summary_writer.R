@@ -78,10 +78,22 @@ for (sample in SAMPLES) {
   # --------------------------
   pacnet_scores <- fread(PACNET_FILE)
   esc_scores <- subset(pacnet_scores, V1=="esc")
-  
+
+  print(names(esc_scores))
+  print(sample)
+
   esc_score <- NA
   col <- grep(sample, names(esc_scores), value = TRUE)
-  esc_score <- esc_scores[[col]]
+
+  if (length(col) == 1) {
+      esc_score <- esc_scores[[col]]
+  } else if (length(col) > 1) {
+      warning(paste("Multiple PACNet columns matched sample:", sample))
+      esc_score <- esc_scores[[col[1]]]
+  } else {
+      warning(paste("No PACNet ESC score column matched sample:", sample))
+      esc_score <- NA
+  }
   
   # --------------------------
   # COSMIC mutations (dynamic genes)
