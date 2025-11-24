@@ -441,6 +441,14 @@ Rscript /pipeline/modules/summary_writer.R \
     --samples "$(IFS=,; echo "${SAMPLES[*]}")" \
     --project "$PROJECT"
 
+SAMPLES_STR=$(IFS=, ; echo "${SAMPLES[*]}")
+
+Rscript /pipeline/report_builder.R \
+  --output_dir "$OUTPUT_DIR" \
+  --project "$PROJECT" \
+  --samples "$SAMPLES_STR" \
+  --html
+
 echo "[INFO] Summary files written."
 
 echo "[INFO] Pipeline completed. Results in $OUTPUT_DIR"
