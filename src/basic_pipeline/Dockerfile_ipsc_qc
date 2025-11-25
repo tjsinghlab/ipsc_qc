@@ -12,7 +12,7 @@ LABEL description="Slim Bulk RNA-seq pipeline image (no refs baked in)."
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y \
         wget curl unzip tar gzip bzip2 git \
-        build-essential libseccomp-dev pkg-config \
+        build-essential libseccomp-dev pkg-config pandoc pandoc-citeproc \
         squashfs-tools cryptsetup uidmap squashfuse fuse-overlayfs fuse2fs \
         libfuse2 libcurl4-openssl-dev libssl-dev libxml2-dev \
         zlib1g-dev libbz2-dev liblzma-dev libpcre3-dev \
