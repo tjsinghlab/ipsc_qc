@@ -150,15 +150,35 @@ df <- df %>% mutate_if(is.character,as.numeric)
 
 mat<-as.matrix(df)
 rownames(mat)<-rnamx
-# Step 1: Call the pdf command to start the plot
-pdf(file = file.path(OUTPUT_DIR, "final_summary_heatmap.pdf"))#,   # The directory you want to save the file in
-    #width = 4, # The width of the plot in inches
-    #height = 4) # The height of the plot in inches
 
-# Step 2: Create the plot with R code
-levelplot(mat, scale=list(x=list(rot=45)))
+png(
+  file.path(OUTPUT_DIR, "final_summary_heatmap.png"),
+  width = 1000 * length(SAMPLES),
+  height = 5000,
+  #units = "in",
+  res = 300,
+  type = "cairo"
+)
 
-# Step 3: Run dev.off() to create the file!
+levelplot(
+  mat,
+  scale = list(
+    x = list(rot = 45, cex = 1.2),
+    y = list(cex = 1.2)
+  ),
+  par.settings = list(
+    fontsize = list(
+      text = 14,
+      points = 12
+    ),
+    axis.text = list(cex = 1.2),
+    axis.line = list(lwd = 1.2)
+  ),
+  colorkey = list(
+    labels = list(cex = 1.2)
+  )
+)
+
 dev.off()
 
 message("[INFO] Summary files written to output path.")
