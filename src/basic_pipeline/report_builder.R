@@ -69,7 +69,7 @@ cat("## Project Summary: ', project, ' \n")
 # PACNet + Final heatmap block
 # -------------------------------
 pacnet_png <- file.path(output_dir, "pacnet", "PACNet_heatmap.png")
-final_pdf  <- file.path(output_dir, "final_summary_heatmap.pdf")
+final_png  <- file.path(output_dir, "final_summary_heatmap.png")
 
 cat(
   paste0(
@@ -83,9 +83,9 @@ cat(
 '}\n',
 '\n',
 'cat("\\n\\n# Final Summary Heatmap\\n\\n")\n',
-'if (file.exists("', final_pdf, '")) {\n',
+'if (file.exists("', final_png, '")) {\n',
 '  cat("## Combined Heatmap Overview\\n\\n")\n',
-'  cat("<iframe src=\'", normalizePath("', final_pdf, '"), "\' width=\'100%\' height=\'800px\'></iframe>\\n", sep="")\n',
+'  cat("![](", normalizePath("', final_png, '"), ")\\n\\n", sep="")\n',
 '} else {\n',
 '  cat("*(File not found.)*\\n")\n',
 '}\n',
