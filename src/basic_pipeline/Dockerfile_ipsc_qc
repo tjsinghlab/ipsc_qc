@@ -45,7 +45,7 @@ ENV CRAN_REPO=https://packagemanager.posit.co/cran/2024-01-01
 # Install CRAN packages
 # ----------------------
 RUN R -e "install.packages(c( \
-        'devtools','zoo','gplots','patchwork','ggplot2','optparse','dplyr', 'fs', \
+        'devtools','zoo','gplots','patchwork','ggplot2','Cairo','optparse','dplyr', 'fs', \
         'data.table','readr','tidyr','tidyverse','lattice','fuzzyjoin','pdftools','stringr','magick','purrr','jsonlite', \
         'rmarkdown','knitr','igraph','reshape2','R.utils','png','RCurl','DBI','RSQLite','XML'), repos='${CRAN_REPO}')"
 
