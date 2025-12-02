@@ -141,70 +141,92 @@ summary_df <- rbindlist(lapply(summary_list, as.list), fill=TRUE)
 output_file <- file.path(OUTPUT_DIR, "final_summary_table.tsv")
 fwrite(summary_df, output_file, sep="\t", na="NA", quote=FALSE)
 
-# Construct and save summary heatmap
-require(lattice)
-df<-summary_df
-rnamx<-df$Sample
-df$Sample<-NULL
-df <- df %>% mutate_if(is.character,as.numeric)
+# -------------------------------------------
+# Combined heatmap: Mutations (top) + QC Metrics (bottom)
+# -------------------------------------------
 
-mat<-as.matrix(df)
-rownames(mat)<-rnamx
+library(ggplot2)
+library(reshape2)
+library(patchwork)
 
+df <- summary_df
+rnamx <- df$Sample
+df$Sample <- NULL
+df <- df %>% mutate_if(is.character, as.numeric)
+
+mat <- as.matrix(df)
+rownames(mat) <- rnamx
+
+# Split columns by type
+mut_cols   <- grep("Mutations$", colnames(mat), value = TRUE)
+other_cols <- setdiff(colnames(mat), mut_cols)
+
+mat_mut   <- mat[, mut_cols, drop = FALSE]
+mat_other <- mat[, other_cols, drop = FALSE]
+
+# Melt for ggplot2
+df_mut   <- melt(mat_mut)
+df_other <- melt(mat_other)
+
+colnames(df_mut)   <- c("Sample", "Metric", "Value")
+colnames(df_other) <- c("Sample", "Metric", "Value")
+
+# dynamic axis-label scaling
 num_samples <- length(SAMPLES)
-plot_width_in  <- max(12, num_samples * 0.5)
-plot_height_in <- 16
+if (num_samples <= 20) {
+  x_cex <- 12
+} else if (num_samples <= 50) {
+  x_cex <- 10
+} else if (num_samples <= 100) {
+  x_cex <- 8
+} else {
+  x_cex <- 6
+}
 
+y_cex <- 12
+
+# Color palette
+cools <- colorRampPalette(c("black", "limegreen", "yellow"))(100)
+
+# MUTATION HEATMAP (top)
+p_mut <- ggplot(df_mut, aes(x = Sample, y = Metric, fill = Value)) +
+  geom_tile(color = "white") +
+  scale_fill_gradientn(colours = cools, name = "Mutations") +
+  theme_minimal(base_size = 14) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = x_cex),
+    axis.text.y = element_text(size = y_cex),
+    plot.title  = element_text(size = 16, face = "bold")
+  ) +
+  labs(title = "Mutation Counts", x = "Samples", y = "Mutation Metrics")
+
+# QC SCORES HEATMAP (bottom, fixed 0–1)
+p_other <- ggplot(df_other, aes(x = Sample, y = Metric, fill = Value)) +
+  geom_tile(color = "white") +
+  scale_fill_gradientn(colours = cools, limits = c(0, 1), name = "QC Score") +
+  theme_minimal(base_size = 14) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = x_cex),
+    axis.text.y = element_text(size = y_cex),
+    plot.title  = element_text(size = 16, face = "bold")
+  ) +
+  labs(title = "QC Metrics (0–1)", x = "Samples", y = "QC Metrics")
+
+# STACKED vertically: top = mutations, bottom = QC
+combined_plot <- p_mut / p_other + 
+  plot_layout(heights = c(1, 1.2))
+
+# Output one PNG
 png(
   file = file.path(OUTPUT_DIR, "final_summary_heatmap.png"),
-  width = plot_width_in,
-  height = plot_height_in,
+  width = max(12, num_samples * 0.5),
+  height = 22,
   units = "in",
   res = 300,
   type = "cairo"
 )
 
-# --- Dynamic axis label scaling ---
-# As samples increase, text shrinks slightly—but never becomes tiny
-if (num_samples <= 20) {
-  x_cex <- 1.2
-} else if (num_samples <= 50) {
-  x_cex <- 1.0
-} else if (num_samples <= 100) {
-  x_cex <- 0.8
-} else {
-  x_cex <- 0.6
-}
-
-y_cex <- 1.2  # y-axis typically fine to keep constant
-
-# --- Clean theme inspired by your ggplot settings ---
-levelplot(
-  mat,
-  scales = list(
-    x = list(rot = 45, cex = x_cex),
-    y = list(cex = y_cex)
-  ),
-  par.settings = list(
-    fontsize = list(
-      text = 14,
-      points = 12
-    ),
-    axis.text = list(cex = 1.2),
-    axis.line = list(lwd = 1.2),
-    strip.border = list(col = "transparent"),
-    strip.background = list(col = "transparent")
-  ),
-  colorkey = list(
-    labels = list(cex = 1.2),
-    height = 1
-  ),
-  xlab = "Samples",
-  ylab = "Key Metrics",
-  main = "Summary Heatmap",
-  col.regions = colorRampPalette(c("black", "limegreen", "yellow"))(100)
-)
-
+print(combined_plot)
 dev.off()
 
 message("[INFO] Summary files written to output path.")
