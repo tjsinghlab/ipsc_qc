@@ -151,20 +151,39 @@ df <- df %>% mutate_if(is.character,as.numeric)
 mat<-as.matrix(df)
 rownames(mat)<-rnamx
 
+num_samples <- length(SAMPLES)
+plot_width_in  <- max(12, num_samples * 0.5)
+plot_height_in <- 16
+
 png(
-  file.path(OUTPUT_DIR, "final_summary_heatmap.png"),
-  width = 1000 * length(SAMPLES),
-  height = 5000,
-  #units = "in",
+  file = file.path(OUTPUT_DIR, "final_summary_heatmap.png"),
+  width = plot_width_in,
+  height = plot_height_in,
+  units = "in",
   res = 300,
   type = "cairo"
 )
 
+# --- Dynamic axis label scaling ---
+# As samples increase, text shrinks slightly—but never becomes tiny
+if (num_samples <= 20) {
+  x_cex <- 1.2
+} else if (num_samples <= 50) {
+  x_cex <- 1.0
+} else if (num_samples <= 100) {
+  x_cex <- 0.8
+} else {
+  x_cex <- 0.6
+}
+
+y_cex <- 1.2  # y-axis typically fine to keep constant
+
+# --- Clean theme inspired by your ggplot settings ---
 levelplot(
   mat,
-  scale = list(
-    x = list(rot = 45, cex = 1.2),
-    y = list(cex = 1.2)
+  scales = list(
+    x = list(rot = 45, cex = x_cex),
+    y = list(cex = y_cex)
   ),
   par.settings = list(
     fontsize = list(
@@ -172,11 +191,18 @@ levelplot(
       points = 12
     ),
     axis.text = list(cex = 1.2),
-    axis.line = list(lwd = 1.2)
+    axis.line = list(lwd = 1.2),
+    strip.border = list(col = "transparent"),
+    strip.background = list(col = "transparent")
   ),
   colorkey = list(
-    labels = list(cex = 1.2)
-  )
+    labels = list(cex = 1.2),
+    height = 1
+  ),
+  xlab = "Samples",
+  ylab = "Tissue Types",
+  main = "Classification Heatmap",
+  col.regions = colorRampPalette(c("black", "limegreen", "yellow"))(100)
 )
 
 dev.off()
