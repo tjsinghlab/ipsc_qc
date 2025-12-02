@@ -200,8 +200,8 @@ levelplot(
     height = 1
   ),
   xlab = "Samples",
-  ylab = "Tissue Types",
-  main = "Classification Heatmap",
+  ylab = "Key Metrics",
+  main = "Summary Heatmap",
   col.regions = colorRampPalette(c("black", "limegreen", "yellow"))(100)
 )
 
