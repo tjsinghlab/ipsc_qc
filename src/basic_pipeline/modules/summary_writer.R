@@ -220,7 +220,7 @@ combined_plot <- p_mut / p_other +
 png(
   file = file.path(OUTPUT_DIR, "final_summary_heatmap.png"),
   width = max(12, num_samples * 0.5),
-  height = 22,
+  height = 11,
   units = "in",
   res = 300,
   type = "cairo"
