@@ -140,12 +140,19 @@ RSEM_REF=$(resolve_ref "RSEM reference" "rsem_reference" \
 SAMPLES=()
 shopt -s nullglob
 
-for fq in "${FASTQ_DIR}"/*_R1*.fastq.gz; do
+for fq in "$FASTQ_DIR"/*.{fq,fastq}.gz "$FASTQ_DIR"/*.fq.gz "$FASTQ_DIR"/*.fastq.gz; do
+    [ -e "$fq" ] || continue  # skip if no matches
+
     base=$(basename "$fq")
-    # Remove everything from _R1 onward
-    sample="${base%%_R1*}"
+
+    # Strip any of these patterns:
+    #   _R1, _R1_001, _1, _1_001   (and same for 2, R2)
+    sample=$(echo "$base" \
+        | sed -E 's/(_R?[12](_001)?)\.(fastq|fq)\.gz$//')
+
     SAMPLES+=("$sample")
 done
+
 
 if [[ ${#SAMPLES[@]} -eq 0 ]]; then
     echo "[ERROR] No FASTQ files found in $FASTQ_DIR"
@@ -179,8 +186,8 @@ run_sample() {
     local sample_outdir="$OUTPUT_DIR/$sample"
     mkdir -p "$sample_outdir"
 
-    local fq1=$(ls "${FASTQ_DIR}/${sample}"*_R1*.fastq.gz 2>/dev/null || ls "${FASTQ_DIR}/${sample}"*_1*.fastq.gz 2>/dev/null || echo "")
-    local fq2=$(ls "${FASTQ_DIR}/${sample}"*_R2*.fastq.gz 2>/dev/null || ls "${FASTQ_DIR}/${sample}"*_2*.fastq.gz 2>/dev/null || echo "")
+    local fq1=$(ls "${FASTQ_DIR}/${sample}"*_[Rr]1*.f*q.gz 2>/dev/null || echo "")
+    local fq2=$(ls "${FASTQ_DIR}/${sample}"*_[Rr]2*.f*q.gz 2>/dev/null || echo "")
     local bam_file="$sample_outdir/Mark_duplicates_outputs/${sample}.Aligned.sortedByCoord.out.md.bam"
     local rsem_file="$sample_outdir/RSEM_outputs/${sample}.rsem.genes.results.gz"
 
@@ -329,8 +336,8 @@ run_downstream() {
 
     echo "[INFO] Starting downstream analyses for sample: $sample"
 
-    local fq1=$(ls "${FASTQ_DIR}/${sample}"*_R1*.fastq.gz 2>/dev/null || ls "${FASTQ_DIR}/${sample}"*_1*.fastq.gz 2>/dev/null || echo "")
-    local fq2=$(ls "${FASTQ_DIR}/${sample}"*_R2*.fastq.gz 2>/dev/null || ls "${FASTQ_DIR}/${sample}"*_2*.fastq.gz 2>/dev/null || echo "")
+    local fq1=$(ls "${FASTQ_DIR}/${sample}"*_[Rr]1*.f*q.gz 2>/dev/null || echo "")
+    local fq2=$(ls "${FASTQ_DIR}/${sample}"*_[Rr]2*.f*q.gz 2>/dev/null || echo "")
 
     if [[ -z "$fq1" || -z "$fq2" ]]; then
         echo "[ERROR] Could not find both R1 and R2 files for sample '$sample' in $FASTQ_DIR" >&2
