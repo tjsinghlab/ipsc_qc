@@ -11,7 +11,8 @@ workflow rnaseq_pipeline_fastq_workflow {
         Array[File] fastqs
         File fastq1=fastqs[0]
         File fastq2=fastqs[1]
-        String prefix=basename(fastq1, "_R1.fastq.gz")
+        String prefix = sub("\\.(fastq|fq)\\.gz$", "", basename(fastq1))
+        prefix = sub("(_R?1(_001)?)$", "", prefix)
         String star_index_oh75
         String rsem_reference
         File genes_gtf
