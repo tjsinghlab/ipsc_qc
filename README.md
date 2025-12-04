@@ -50,6 +50,7 @@ singularity exec \
     --output_dir /output \
     --ref_dir /ref \
     --cosmic_dir /cosmic
+    --keep_files true
 ```
 
 ## Requirements
@@ -112,6 +113,7 @@ The pipeline depends on the following command line tools:
 | `--output_dir`   | Path to desired output directory                                           | `./outputs`                    |
 | `--cosmic_dir`   | Directory containing downloaded COSMIC database files.                     | `cosmic`                       |
 | `--project`      | Project name                                                               | `default_project`              |
+| `--keep_files`   | Keep bulky intermediate files (VCFs, BAMs, etc.)?                          | `true`                         |
 
 **Note:**  
 * ***File base names should be unique for each sample and consistent across file types (e.g., `sample1.vcf`, `sample1.bam`, `sample1.genes.results`, `sample1_R1.fastq.gz`, `sample1_R2.fastq.gz`)***
@@ -266,6 +268,7 @@ src
 
 ## Notes
 - This pipeline is memory-intensive. Implementation on HPC is recommended.
+- To save space, set the --keep_files tag to false, especially if you do not intend to use the aligned BAM files or VCF files for other analyses.
 - WDL scripts will utilize cromwell, but a caper server will not be started. Backend is local. All packages (including caper) and scripts are contained within the image; user does not need to install anything beyond what is included in the [requirements](#requirements) section.
 
 ---
