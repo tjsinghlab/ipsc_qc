@@ -114,8 +114,8 @@ The pipeline depends on the following command line tools:
 | `--project`      | Project name                                                               | `default_project`              |
 
 **Note:**  
-File base names should be unique for each sample and consistent across file types  
-(e.g., `sample1.vcf`, `sample1.bam`, `sample1.genes.results`, `sample1_R1.fastq.gz`, `sample1_R2.fastq.gz`)
+* ***File base names should be unique for each sample and consistent across file types (e.g., `sample1.vcf`, `sample1.bam`, `sample1.genes.results`, `sample1_R1.fastq.gz`, `sample1_R2.fastq.gz`)***
+* ***Pipeline will accept fastq files with base names formatted as ```SAMPLE1_01 & SAMPLE1_02``` or ```SAMPLE1_R1 & SAMPLE1_R2``` with file formats ```.fastq.gz``` or ```.fq.gz```. If your fastq files do not follow these formats, please reformat your files.***
 
 ---
 
@@ -211,6 +211,7 @@ output_dir
 ```
 src
     └── basic_pipeline
+        ├── docker_image_structure
         ├── Dockerfile_ipsc_qc
         ├── modules
         │   ├── cancer_mutation_calling
@@ -223,36 +224,37 @@ src
         │   │   └── outlier_detection.R
         │   ├── PACNet
         │   │   └── run_pacnet.R
-        │   └── preprocessing
-        │       └── wdlplay
-        │           ├── LICENSE.md
-        │           ├── Makefile
-        │           ├── MANIFEST.in
-        │           ├── README.md
-        │           ├── requirements.txt
-        │           ├── settings.json
-        │           ├── setup.cfg
-        │           ├── setup.py
-        │           ├── versioneer.py
-        │           ├── warp-pipelines
-        │           │   ├── bulk_RNAseq_preprocess
-        │           │   │   ├── RNAseq_pipeline_fastq.wdl
-        │           │   │   ├── run_wdl.py
-        │           │   │   └── wdl
-        │           │   │       ├── fastqc.wdl
-        │           │   │       ├── markduplicates.wdl
-        │           │   │       ├── rnaseqc2.wdl
-        │           │   │       ├── rsem.wdl
-        │           │   │       └── star.wdl
-        │           │   └── GATK_variant_calling
-        │           │       ├── gatk4-rna-best-practices.wdl
-        │           │       ├── gatk4-rna-germline-calling_run.py
-        │           │       └── gatk4-rna-germline-variant-calling.inputs.json
-        │           └── wdlplay
-        │               ├── __init__.py
-        │               ├── _version.py
-        │               ├── db.json
-        │               └── wdlplayer.py
+        │   ├── preprocessing
+        │   │   └── wdlplay
+        │   │       ├── LICENSE.md
+        │   │       ├── Makefile
+        │   │       ├── MANIFEST.in
+        │   │       ├── README.md
+        │   │       ├── requirements.txt
+        │   │       ├── settings.json
+        │   │       ├── setup.cfg
+        │   │       ├── setup.py
+        │   │       ├── versioneer.py
+        │   │       ├── warp-pipelines
+        │   │       │   ├── bulk_RNAseq_preprocess
+        │   │       │   │   ├── RNAseq_pipeline_fastq.wdl
+        │   │       │   │   ├── run_wdl.py
+        │   │       │   │   └── wdl
+        │   │       │   │       ├── fastqc.wdl
+        │   │       │   │       ├── markduplicates.wdl
+        │   │       │   │       ├── rnaseqc2.wdl
+        │   │       │   │       ├── rsem.wdl
+        │   │       │   │       └── star.wdl
+        │   │       │   └── GATK_variant_calling
+        │   │       │       ├── gatk4-rna-best-practices.wdl
+        │   │       │       ├── gatk4-rna-germline-calling_run.py
+        │   │       │       └── gatk4-rna-germline-variant-calling.inputs.json
+        │   │       └── wdlplay
+        │   │           ├── __init__.py
+        │   │           ├── _version.py
+        │   │           ├── db.json
+        │   │           └── wdlplayer.py
+        │   └── summary_writer.R
         ├── pipeline_runner.sh
         ├── ref_files
         │   └── genes.txt
