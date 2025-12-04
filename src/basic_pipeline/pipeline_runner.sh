@@ -9,6 +9,7 @@ REF_DIR="/ref" #mounted to image by user
 FASTQ_DIR="/data" #mounted to image by user
 OUTPUT_DIR="/output" #mounted to image by user
 COSMIC_DIR="/cosmic" #mounted to image by user
+KEEP_FILES=true
 
 # Paths to WDL runners
 PY_RUNNER1="/pipeline/modules/preprocessing/wdlplay/warp-pipelines/bulk_RNAseq_preprocess/run_wdl.py" 
@@ -28,6 +29,7 @@ usage() {
     echo "Optional arguments:"
     echo "  --cosmic_dir PATH    Directory containing COSMIC references"
     echo "  --project NAME       Project name (default: ${PROJECT})"
+    echo "  --keep_files BOOL    Whether to keep intermediate outputs (default: true)"
     echo ""
     exit 1
 }
@@ -42,6 +44,19 @@ while [[ $# -gt 0 ]]; do
         --output_dir) OUTPUT_DIR="$2"; shift ;;
         --ref_dir)    REF_DIR="$2"; shift ;;
         --cosmic_dir) COSMIC_DIR="$2"; shift ;;
+        --keep_files)
+            # Normalize to lowercase
+            val=$(echo "$2" | tr '[:upper:]' '[:lower:]')
+            if [[ "$val" == "true" ]]; then
+                KEEP_FILES=true
+            elif [[ "$val" == "false" ]]; then
+                KEEP_FILES=false
+            else
+                echo "[ERROR] --keep_files must be 'true' or 'false'"
+                exit 1
+            fi
+            shift
+            ;;
         -h|--help)    usage ;;
         *) echo "[ERROR] Unknown option: $1"; usage ;;
     esac
@@ -138,53 +153,46 @@ RSEM_REF=$(resolve_ref "RSEM reference" "rsem_reference" \
 declare -A fq1_map fq2_map
 SAMPLES=()
 
-# Iterate over FASTQ files
 for fq in "$FASTQ_DIR"/*.fastq.gz "$FASTQ_DIR"/*.fq.gz; do
     [ -e "$fq" ] || continue
     base=$(basename "$fq")
 
-    # Parse filenames like *_1.fastq.gz, *_2.fastq.gz, *_R1.fastq.gz, *_R2.fastq.gz
-    if [[ "$base" =~ ^(.+)_([Rr]?[12])\.fastq\.gz$ ]]; then
+    # Match:
+    #   sample_1.fastq.gz
+    #   sample_R1.fastq.gz
+    #   sample_R1_001.fastq.gz
+    #   sample-S7_L002_R2_001.fastq.gz
+    if [[ "$base" =~ ^(.+?)[._-]([Rr]?[12])(_?[0-9]{3})?\.f(ast)?q\.gz$ ]]; then
         sample="${BASH_REMATCH[1]}"
         readnum="${BASH_REMATCH[2]}"
-        readnum="${readnum//[Rr]/}"  # Normalize R1/R2 → 1/2
+        readnum="${readnum//[Rr]/}"   # normalize R1 → 1
     else
-        echo "Warning: Could not parse FASTQ filename: $base" >&2
+        echo "[WARN] Could not parse FASTQ filename: $base" >&2
         continue
     fi
 
-    # Assign to maps
-    if [[ "$readnum" == "1" ]]; then
-        fq1_map["$sample"]="$fq"
-    elif [[ "$readnum" == "2" ]]; then
-        fq2_map["$sample"]="$fq"
+    case "$readnum" in
+        1) fq1_map["$sample"]="$fq" ;;
+        2) fq2_map["$sample"]="$fq" ;;
+        *) echo "[WARN] Unrecognized read number in $base" >&2 ;;
+    esac
+done
+
+# Build sample list
+for s in "${!fq1_map[@]}"; do
+    if [[ -n "${fq2_map[$s]:-}" ]]; then
+        SAMPLES+=("$s")
     else
-        echo "Warning: Unrecognized read number '$readnum' in $base" >&2
+        echo "[WARN] Sample '$s' has R1 but no R2" >&2
     fi
 done
 
-# Build sample list: only include samples with both R1 and R2
-for sample in "${!fq1_map[@]}"; do
-    if [[ -n "${fq2_map[$sample]:-}" ]]; then
-        SAMPLES+=("$sample")
-    else
-        echo "Warning: sample '$sample' has R1 but no R2" >&2
-    fi
+# Check R2 matches
+for s in "${!fq2_map[@]}"; do
+    [[ -z "${fq1_map[$s]:-}" ]] && echo "[WARN] Sample '$s' has R2 but no R1" >&2
 done
 
-# Check for R2 without R1
-for sample in "${!fq2_map[@]}"; do
-    if [[ -z "${fq1_map[$sample]:-}" ]]; then
-        echo "Warning: sample '$sample' has R2 but no R1" >&2
-    fi
-done
-
-# Print summary
-echo "Found ${#SAMPLES[@]} paired samples:"
-for s in "${SAMPLES[@]}"; do
-    echo "  • $s -> R1: $(basename "${fq1_map[$s]}")  R2: $(basename "${fq2_map[$s]}")"
-done
-
+echo "[INFO] Found ${#SAMPLES[@]} paired samples"
 
 # ===========================================
 # Parallelized execution
@@ -208,28 +216,28 @@ run_sample() {
     local sample="$1"
 
     echo "[INFO] Beginning processing for $sample"
+
     local sample_outdir="$OUTPUT_DIR/$sample"
     mkdir -p "$sample_outdir"
 
-    # Retrieve paired FASTQs directly from the maps
-    local fq1=( "$FASTQ_DIR/${sample}"_*1.fastq.gz "$FASTQ_DIR/${sample}"_*R1*.fastq.gz )
-    local fq2=( "$FASTQ_DIR/${sample}"_*2.fastq.gz "$FASTQ_DIR/${sample}"_*R2*.fastq.gz )
+    local fq1="${fq1_map[$sample]}"
+    local fq2="${fq2_map[$sample]}"
 
     if [[ ! -f "$fq1" || ! -f "$fq2" ]]; then
-        echo "ERROR: Could not find paired FASTQs for sample $sample" >&2
+        echo "[ERROR] FASTQs for '$sample' not found" >&2
         return 1
     fi
 
-    echo "Running preprocessing with $fq1 and $fq2"
+    echo "[INFO] FASTQs: $(basename "$fq1"), $(basename "$fq2")"
 
     local bam_file="$sample_outdir/Mark_duplicates_outputs/${sample}.Aligned.sortedByCoord.out.md.bam"
     local rsem_file="$sample_outdir/RSEM_outputs/${sample}.rsem.genes.results.gz"
 
-    # Step 1
-    if [ -f "$bam_file" ] && [ -f "$rsem_file" ]; then
+    # Step 1 — Preprocessing
+    if [[ -f "$bam_file" && -f "$rsem_file" ]]; then
         echo "[SKIP] Preprocessing already complete for $sample"
     else
-        echo "[RUN] Running preprocessing for $sample..."
+        echo "[RUN] Preprocessing for $sample..."
         python3 "$PY_RUNNER1" \
             --fastq1 "$fq1" \
             --fastq2 "$fq2" \
@@ -238,33 +246,36 @@ run_sample() {
             > "$LOG_DIR/${sample}_bulk_preprocess.log" 2>&1
     fi
 
-    # Delete the broken 'data' symlink or variable if it exists
-    find . -xtype l -name data -delete
+    # Clean bad symlinks
+    find "$sample_outdir" -xtype l -name data -delete
 
-    # Step 2
-    if [ -d "$sample_outdir/variant_calling" ] && \
-       compgen -G "$sample_outdir/variant_calling/*.vcf.gz" > /dev/null; then
+    # Step 2 — Variant Calling
+    if compgen -G "$sample_outdir/variant_calling/*.vcf.gz" > /dev/null; then
         echo "[SKIP] Variant calling already complete for $sample"
-        
-    else 
-        echo "[RUN] Running variant calling for $sample..." 
-
+    else
+        echo "[RUN] Variant calling for $sample..."
         python3 "$PY_RUNNER2" \
             --output_dir "$sample_outdir" \
             --sample "$sample" \
             > "$LOG_DIR/${sample}_wdl2.log" 2>&1
     fi
 
-    rm -f "$sample_outdir"/RNAseq/*/call-SplitNCigarReads/execution/*.bam
-    rm -f "$sample_outdir"/RNAseq/*/call-SplitNCigarReads/execution/*.bai
-    rm -f -r "$sample_outdir"/RNAseq/*/call-ScatterIntervalList/execution/out/
-    rm -f -r "$sample_outdir"/RNAseq/*/call-HaplotypeCaller/shard-*
-    rm -f "$sample_outdir"/RNAseq/*/call-AddReadGroups/execution/*.bam
-    rm -f "$sample_outdir"/RNAseq/*/call-AddReadGroups/execution/*.bai
-    rm -f "$sample_outdir"/star_out/*.bai
-    rm -f "$sample_outdir"/star_out/*.bam
+    if [[ "$KEEP_FILES" == false ]]; then
+        echo "[CLEANUP] Removing intermediate artifacts for $sample..."
 
-    echo "[DONE] Preprocessing and variant calling for sample $sample completed."
+        rm -f "$sample_outdir"/RNAseq/*/call-SplitNCigarReads/execution/*.bam
+        rm -f "$sample_outdir"/RNAseq/*/call-SplitNCigarReads/execution/*.bai
+        rm -rf "$sample_outdir"/RNAseq/*/call-ScatterIntervalList/execution/out/
+        rm -rf "$sample_outdir"/RNAseq/*/call-HaplotypeCaller/shard-*
+        rm -f "$sample_outdir"/RNAseq/*/call-AddReadGroups/execution/*.bam
+        rm -f "$sample_outdir"/RNAseq/*/call-AddReadGroups/execution/*.bai
+        rm -f "$sample_outdir"/star_out/*.bai
+        rm -f "$sample_outdir"/star_out/*.bam
+    else
+        echo "[CLEANUP] Skipped (keep_files=true)"
+    fi
+
+    echo "[DONE] Completed sample $sample"
 }
 
 # Detect memory and cores (with or without slurm)
@@ -336,9 +347,6 @@ export OUTPUT_DIR FASTQ_DIR LOG_DIR PY_RUNNER1 PY_RUNNER2 REF_DIR COSMIC_DIR
 # Run samples in parallel with smart throttling
 printf '%s\n' "${SAMPLES[@]}" | xargs -n1 -P "$MAX_JOBS" bash -c 'run_sample "$@"' _
 
-
-
-
 # ===========================================
 # Step: Run PACNet + downstream scripts
 # ===========================================
@@ -394,6 +402,19 @@ run_downstream() {
         echo "[SKIP] Mycoplasma stats exist; skipping for $sample"
     fi
 
+    if [[ "$KEEP_FILES" == false ]]; then
+        echo "[CLEANUP] Removing intermediate mycoplasma detection artifacts for $sample..."
+
+        rm -f "$sample_outdir"/mycoplasma/*.bam
+        rm -f "$sample_outdir"/mycoplasma/*.bam.bai
+        rm -f "$sample_outdir"/mycoplasma/*.bt2
+        rm -f "$sample_outdir"/mycoplasma/*.fna
+    else
+        echo "[CLEANUP] Skipped (keep_files=true)"
+    fi
+
+    echo "[DONE] Completed mycoplasma detection for $sample"
+
     # -------------------------------------------------
     # Step: COSMIC mutation calling (if provided)
     # -------------------------------------------------
@@ -414,6 +435,8 @@ run_downstream() {
         echo "[SKIP] COSMIC_DIR not provided; skipping COSMIC mutation calling"
     fi
 
+    echo "[DONE] Completed cancer mutation calling for $sample"
+
     # -------------------------------------------------
     # Step: eSNPKaryotyping
     # -------------------------------------------------
@@ -429,7 +452,16 @@ run_downstream() {
         echo "[SKIP] eSNPKaryotyping variant table exists; skipping for $sample"
     fi
 
-    echo "[DONE] Finished downstream analyses for $sample"
+    echo "[DONE] Finished eSNPKaryotyping for $sample"
+
+    if [[ "$KEEP_FILES" == false ]]; then
+        echo "[CLEANUP] Removing VCF and BAM files for $sample..."
+        rm -f -r "$sample_outdir"/star_out
+        rm -f -r "$sample_outdir"/variant_calling
+        rm -f -r "$sample_outdir"/Mark_duplicates_outputs
+    else
+        echo "[CLEANUP] Skipped (keep_files=true)"
+    fi
 }
 
 export -f run_downstream
