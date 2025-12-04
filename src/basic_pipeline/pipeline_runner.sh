@@ -247,7 +247,7 @@ run_sample() {
     fi
 
     # Clean bad symlinks
-    find "$sample_outdir" -xtype l -name data -delete
+    find "$sample_outdir" -xtype l -name data -delete 2>/dev/null
 
     # Step 2 — Variant Calling
     if compgen -G "$sample_outdir/variant_calling/*.vcf.gz" > /dev/null; then
