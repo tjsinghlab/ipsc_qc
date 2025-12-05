@@ -117,8 +117,25 @@ The pipeline depends on the following command line tools:
 
 **Note:**  
 * ***File base names should be unique for each sample and consistent across file types (e.g., `sample1.vcf`, `sample1.bam`, `sample1.genes.results`, `sample1_R1.fastq.gz`, `sample1_R2.fastq.gz`)***
-* ***Pipeline will accept fastq files with base names formatted as ```SAMPLE1_01 & SAMPLE1_02``` or ```SAMPLE1_R1 & SAMPLE1_R2``` with file formats ```.fastq.gz``` or ```.fq.gz```. If your fastq files do not follow these formats, please reformat your files.***
+* ***Pipeline will accept fastq files with base names formatted as ```SAMPLE1_01 & SAMPLE1_02``` or ```SAMPLE1_R1 & SAMPLE1_R2```  or ```SAMPLE1_<string>_<string>_R1_<string> & SAMPLE1_<string>_<string>_R2_<string>``` with file formats ```.fastq.gz``` or ```.fq.gz```. See table below for more details. If your fastq files do not follow these formats, please reformat your files.***
 
+**Acceptable fastq file formats:**
+| Example File Name | Notes |
+|------------------|-----------------------------|
+| `samplename_1.fastq.gz`| Simple numeric read identifier |
+| `samplename_2.fq.gz` | Supports both .fastq.gz and .fq.gz |
+| `samplename_R1.fastq.gz` | Standard Illumina R1/R2 notation |
+| `samplename_R2_001.fastq.gz` | Trailing _001 ignored |
+| `sample-R1_001.fq.gz` | Hyphen as separator supported |
+| `samplename-S7_L002_R2_001.fastq.gz` | Handles _S<number> and _L<number> lane info |
+| `24246R-15-15_S0_L001_R1_001.fastq.gz` | Complex, mixed characters, still parsed correctly |
+
+**Key parsing rules:**
+* Sample name is everything before optional _S<number> or _L<number> and before R1/R2 or 1/2.
+* Read number is extracted from R1, R2, 1, or 2 (case-insensitive).
+* Supports .fastq.gz and .fq.gz.
+* Extra numbering like _001 is ignored.
+* Hyphens or underscores as separators are handled.
 ---
 
 ## Outputs
