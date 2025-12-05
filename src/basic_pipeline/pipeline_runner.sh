@@ -162,7 +162,7 @@ for fq in "$FASTQ_DIR"/*.fastq.gz "$FASTQ_DIR"/*.fq.gz; do
     #   sample_R1.fastq.gz
     #   sample_R1_001.fastq.gz
     #   sample-S7_L002_R2_001.fastq.gz
-    if [[ "$base" =~ ^(.+?)[._-]([Rr]?[12])(_?[0-9]{3})?\.f(ast)?q\.gz$ ]]; then
+    if [[ "$base" =~ ^(.+?)(?:_[0-9]{3})*[._-]([Rr]?[12])(?:_[0-9]{3})?\.f(ast)?q\.gz$ ]]; then
         sample="${BASH_REMATCH[1]}"
         readnum="${BASH_REMATCH[2]}"
         readnum="${readnum//[Rr]/}"   # normalize R1 → 1
