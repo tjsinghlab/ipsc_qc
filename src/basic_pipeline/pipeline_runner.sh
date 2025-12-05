@@ -372,18 +372,18 @@ fi
 
 run_downstream() {
     local sample="$1"
+    local fq1="$2"
+    local fq2="$3"
     local sample_outdir="$OUTPUT_DIR/$sample"
     mkdir -p "$sample_outdir"
 
     echo "[INFO] Starting downstream analyses for sample: $sample"
-
-    local fq1=$(ls "${FASTQ_DIR}/${sample}"*_[Rr]1*.f*q.gz 2>/dev/null || echo "")
-    local fq2=$(ls "${FASTQ_DIR}/${sample}"*_[Rr]2*.f*q.gz 2>/dev/null || echo "")
-
-    if [[ -z "$fq1" || -z "$fq2" ]]; then
+    if [[ -z "$fq1" || -z "$fq2" || ! -f "$fq1" || ! -f "$fq2" ]]; then
         echo "[ERROR] Could not find both R1 and R2 files for sample '$sample' in $FASTQ_DIR" >&2
-        exit 1
+        return 1   # return, don't exit entire pipeline
     fi
+
+    echo "[INFO] Using FASTQs: $(basename "$fq1"), $(basename "$fq2")"
 
     # -------------------------------------------------
     # Step: Mycoplasma detection
@@ -468,7 +468,17 @@ export -f run_downstream
 export OUTPUT_DIR FASTQ_DIR LOG_DIR REF_DIR COSMIC_DIR
 
 MAX_JOBS=${MAX_JOBS:-$(nproc)}
-printf '%s\n' "${SAMPLES[@]}" | xargs -n1 -P "$MAX_JOBS" bash -c 'run_downstream "$@"' _
+#printf '%s\n' "${SAMPLES[@]}" | xargs -n1 -P "$MAX_JOBS" bash -c 'run_downstream "$@"' _
+tmplist=$(mktemp)
+for s in "${SAMPLES[@]}"; do
+  printf '%s\t%s\t%s\n' "$s" "${fq1_map[$s]}" "${fq2_map[$s]}" >> "$tmplist"
+done
+
+# Run downstream analyses in parallel safely
+xargs -a "$tmplist" -n1 -P "$MAX_JOBS" -I{} bash -c "IFS=\$'\t'; read -r sample fq1 fq2 <<< \"{}\"; run_downstream \"\$sample\" \"\$fq1\" \"\$fq2\"" _
+
+rm -f "$tmplist"
+
 
 echo "[STEP] Organizing output directories..."
 
