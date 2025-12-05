@@ -149,29 +149,38 @@ RSEM_REF=$(resolve_ref "RSEM reference" "rsem_reference" \
    --gtf $REF_DIR/gencode.v39.GRCh38.annotation.gtf \
    --num-threads 4")
 
+# Parse sample names
 # Initialize maps
-declare -A fq1_map fq2_map
+declare -A fq1_map fq2_map # declare 2 associative arrays (keys are sample names, values are fastq paths)
 SAMPLES=()
 
-for fq in "$FASTQ_DIR"/*.fastq.gz "$FASTQ_DIR"/*.fq.gz; do
-    [ -e "$fq" ] || continue
-    base=$(basename "$fq")
+for fq in "$FASTQ_DIR"/*.fastq.gz "$FASTQ_DIR"/*.fq.gz; do # loop over all files ending in fastq.gz or fq.gz
+    [ -e "$fq" ] || continue # check if files exist
+    base=$(basename "$fq") # extract base name from fasttq file
+    sample="" # initialize variable name for sample
+    readnum="" # initialize variable name for read number (1 or 2)
 
-    # Match:
-    #   sample_1.fastq.gz
-    #   sample_R1.fastq.gz
-    #   sample_R1_001.fastq.gz
-    #   sample-S7_L002_R2_001.fastq.gz
-    if [[ "$base" =~ ^(.+?)(?:_[0-9]{3})*[._-]([Rr]?[12])(?:_[0-9]{3})?\.f(ast)?q\.gz$ ]]; then
+    # --------- Option 1: SAMPLENAME_R1/R2.fastq.gz ---------
+    if [[ "$base" =~ ^(.+?)_R([12])(?:_[0-9]{3})?\.f(ast)?q\.gz$ ]]; then # check if file name matches SAMPLENAME_R1/2.fastq.gz pattern
+        sample="${BASH_REMATCH[1]}" # assign sample name
+        readnum="${BASH_REMATCH[2]}" # assign read number
+    # --------- Option 2: SAMPLENAME_1/2.fastq.gz ---------
+    elif [[ "$base" =~ ^(.+?)_([12])\.f(ast)?q\.gz$ ]]; then
         sample="${BASH_REMATCH[1]}"
         readnum="${BASH_REMATCH[2]}"
-        readnum="${readnum//[Rr]/}"   # normalize R1 → 1
+    # --------- Option 3: Complex Illumina-style filenames ---------
+    #elif [[ "$base" =~ ^(.+?)(?:_S[0-9]+)?(?:_L[0-9]{3})?[_-]?([Rr]?[12])(?:_[0-9]{3})?\.f(ast)?q\.gz$ ]]; then
+    elif [[ "$base" =~ ^(.+?)_S[0-9]+_L[0-9]{3}_[Rr]?([12])_[0-9]{3}\.f(ast)?q\.gz$ ]]; then
+        sample="${BASH_REMATCH[1]}"
+        readnum="${BASH_REMATCH[2]}"
+        readnum="${readnum//[Rr]/}"  # normalize R1/R2 → 1/2
     else
         echo "[WARN] Could not parse FASTQ filename: $base" >&2
         continue
     fi
 
-    case "$readnum" in
+    # --------- Assign to map ---------
+    case "$readnum" in # depending on the read number (1 or 2), store path in fq_map:
         1) fq1_map["$sample"]="$fq" ;;
         2) fq2_map["$sample"]="$fq" ;;
         *) echo "[WARN] Unrecognized read number in $base" >&2 ;;
@@ -194,6 +203,13 @@ done
 
 echo "[INFO] Found ${#SAMPLES[@]} paired samples"
 
+echo "[CHECK] FASTQ mappings for each sample:"
+for s in "${SAMPLES[@]}"; do
+    echo "  Sample: $s"
+    echo "    R1: ${fq1_map[$s]}"
+    echo "    R2: ${fq2_map[$s]}"
+done
+
 # ===========================================
 # Parallelized execution
 # ===========================================
@@ -212,23 +228,39 @@ else
   echo "[INFO] Existing Caper config found at $HOME/.caper/default.conf. Skipping init."
 fi
 
+# ------------------------------------------
+# Prepare list of samples with their FASTQs
+# ------------------------------------------
+RUN_ARGS=()
+for s in "${SAMPLES[@]}"; do
+    fq1="${fq1_map[$s]}"
+    fq2="${fq2_map[$s]}"
+
+    # Sanity check
+    echo "[CHECK] FASTQs for sample $s:"
+    echo "    R1: $fq1"
+    echo "    R2: $fq2"
+
+    RUN_ARGS+=("$s" "$fq1" "$fq2")
+done
+
 run_sample() {
     local sample="$1"
+    local fq1="$2"
+    local fq2="$3"
 
     echo "[INFO] Beginning processing for $sample"
+    echo "[SANITY CHECK] Using FASTQs:"
+    echo "    R1: $fq1"
+    echo "    R2: $fq2"
 
     local sample_outdir="$OUTPUT_DIR/$sample"
     mkdir -p "$sample_outdir"
 
-    local fq1="${fq1_map[$sample]}"
-    local fq2="${fq2_map[$sample]}"
-
-    if [[ ! -f "$fq1" || ! -f "$fq2" ]]; then
+    if [[ -z "$fq1" || -z "$fq2" ]]; then
         echo "[ERROR] FASTQs for '$sample' not found" >&2
         return 1
     fi
-
-    echo "[INFO] FASTQs: $(basename "$fq1"), $(basename "$fq2")"
 
     local bam_file="$sample_outdir/Mark_duplicates_outputs/${sample}.Aligned.sortedByCoord.out.md.bam"
     local rsem_file="$sample_outdir/RSEM_outputs/${sample}.rsem.genes.results.gz"
@@ -345,7 +377,8 @@ export -f run_sample
 export OUTPUT_DIR FASTQ_DIR LOG_DIR PY_RUNNER1 PY_RUNNER2 REF_DIR COSMIC_DIR
 
 # Run samples in parallel with smart throttling
-printf '%s\n' "${SAMPLES[@]}" | xargs -n1 -P "$MAX_JOBS" bash -c 'run_sample "$@"' _
+#printf '%s\n' "${SAMPLES[@]}" | xargs -n1 -P "$MAX_JOBS" bash -c 'run_sample "$@"' _
+printf '%s\n' "${RUN_ARGS[@]}" | xargs -n 3 -P "$MAX_JOBS" bash -c 'run_sample "$@"' _
 
 # ===========================================
 # Step: Run PACNet + downstream scripts
