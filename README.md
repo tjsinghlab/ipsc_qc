@@ -288,6 +288,21 @@ src
 - To save space, set the --keep_files tag to false, especially if you do not intend to use the aligned BAM files or VCF files for other analyses.
 - WDL scripts will utilize cromwell, but a caper server will not be started. Backend is local. All packages (including caper) and scripts are contained within the image; user does not need to install anything beyond what is included in the [requirements](#requirements) section.
 
+### Interpretation Guidelines: 
+Based solely on bulk RNA sequencing data, this pipeline should show you comprehensive QC metrics for each iPSC line that you run. The interpretation of several of these metrics relies heavily on comparison with the other lines in your batch, and should give the user the ability to decide which of their lines to use for downstream experiments and analyses. The main purpose of the pipeline is not to provide complex or definitive predictions of differentiation outcomes, but to provide the user with enough metrics to make an informed decision on which lines to move forward with. Additionally, it provides a baseline framework for assessing the quality of iPSC lines, with the intention of standardizing which metrics are used for selection across labs. This will make the study of iPSC models and their efficacy more diagnosable and failures less subjective across studies.
+
+- The *PACNet* module will let the user know if their cell line has deviated from the pluripotent state, or has begun to express lineage-specific markers. If one or multiple lines show an abnormal score in the “esc” category, this should be apparent in the PACNet heatmap as well as the summary heatmap. If a line has a lower score than the other lines in this category, it may no longer be pluripotent, therefore not suited for differentiation.
+
+- The *cancer mutation* module detects mutations in cancer-associated genes–these are not uncommon and may oftentimes be benign, but if one or multiple lines have substantially higher numbers of mutations in genes like TP53, EGFR, and BRCA1, then this is easily identifiable from the summary heatmap. If a line has an abundance of mutations in these genes, it carries a higher likelihood of becoming cancerous.
+
+- The *eSNPKaryotyping* module will detect chromosomal abnormalities, and the fraction abnormal karyotype metric shown in the summary heatmap will inform the user how much of the line’s genome has been affected by these abnormalities. If the fraction of abnormal SNPs in a given line is higher than the others, as seen in the summary heatmap, this may signal genomic instability, unpredictable differentiation outcomes, and/or tumorigenic potential.
+
+- The *mycoplasma detection* module will assess the percent alignment of a line’s genome to the genomes of three species of mycoplasma. If a line has a substantial amount of alignment with any of the mycoplasma genomes–as depicted in the summary heatmap–then it is likely contaminated and therefore not suited for further analyses.
+
+- The *outlier analyses*–based on PCA of counts and of esc scores–provide a way of determining which lines have significantly deviated from the others in terms of overall gene expression and expression of pluripotent markers. Lines shown to be outliers by this analytical framework may not produce optimal results, compared to other lines in the batch.
+
+- The summary heatmap shows the metrics described above all at once; if a cell line is compromised, it may show aberrant scores across multiple modules, thereby alerting the user that it may not be suitable for downstream experiments and analyses. However, the user should use their discretion in assessing which modules produce aberrant scores for their lines, and which metrics may not be useful for their specific purposes.
+
 ---
 
 ## Citations
