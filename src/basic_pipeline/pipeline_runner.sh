@@ -161,9 +161,9 @@ for fq in "$FASTQ_DIR"/*.fastq.gz "$FASTQ_DIR"/*.fq.gz; do # loop over all files
     readnum="" # initialize variable name for read number (1 or 2)
 
     # --------- Option 1: SAMPLENAME_R1/R2.fastq.gz ---------
-    if [[ "$base" =~ ^(.+?)_R([12])(?:_[0-9]{3})?\.f(ast)?q\.gz$ ]]; then # check if file name matches SAMPLENAME_R1/2.fastq.gz pattern
-        sample="${BASH_REMATCH[1]}" # assign sample name
-        readnum="${BASH_REMATCH[2]}" # assign read number
+    if [[ "$base" =~ ^(.+?)_R([12])\.f(ast)?q\.gz$ ]]; then
+        sample="${BASH_REMATCH[1]}"
+        readnum="${BASH_REMATCH[2]}"
     # --------- Option 2: SAMPLENAME_1/2.fastq.gz ---------
     elif [[ "$base" =~ ^(.+?)_([12])\.f(ast)?q\.gz$ ]]; then
         sample="${BASH_REMATCH[1]}"
