@@ -10,6 +10,7 @@ FASTQ_DIR="/data" #mounted to image by user
 OUTPUT_DIR="/output" #mounted to image by user
 COSMIC_DIR="/cosmic" #mounted to image by user
 KEEP_FILES=true
+SINGLE_END=false
 
 # Paths to WDL runners
 PY_RUNNER1="/pipeline/modules/preprocessing/wdlplay/warp-pipelines/bulk_RNAseq_preprocess/run_wdl.py" 
@@ -30,6 +31,7 @@ usage() {
     echo "  --cosmic_dir PATH    Directory containing COSMIC references"
     echo "  --project NAME       Project name (default: ${PROJECT})"
     echo "  --keep_files BOOL    Whether to keep intermediate outputs (default: true)"
+    echo "  --single_end BOOL    Whether your input fastq files are single- or paired-end"
     echo ""
     exit 1
 }
@@ -44,6 +46,19 @@ while [[ $# -gt 0 ]]; do
         --output_dir) OUTPUT_DIR="$2"; shift ;;
         --ref_dir)    REF_DIR="$2"; shift ;;
         --cosmic_dir) COSMIC_DIR="$2"; shift ;;
+        --single_end) 
+                    # Normalize to lowercase
+            val=$(echo "$2" | tr '[:upper:]' '[:lower:]')
+            if [[ "$val" == "true" ]]; then
+                SINGLE_END=true
+            elif [[ "$val" == "false" ]]; then
+                SINGLE_END=false
+            else
+                echo "[ERROR] --single_end must be 'true' or 'false'"
+                exit 1
+            fi
+            shift
+            ;;
         --keep_files)
             # Normalize to lowercase
             val=$(echo "$2" | tr '[:upper:]' '[:lower:]')
@@ -154,61 +169,83 @@ RSEM_REF=$(resolve_ref "RSEM reference" "rsem_reference" \
 declare -A fq1_map fq2_map # declare 2 associative arrays (keys are sample names, values are fastq paths)
 SAMPLES=()
 
-for fq in "$FASTQ_DIR"/*.fastq.gz "$FASTQ_DIR"/*.fq.gz; do # loop over all files ending in fastq.gz or fq.gz
-    [ -e "$fq" ] || continue # check if files exist
-    base=$(basename "$fq") # extract base name from fasttq file
-    sample="" # initialize variable name for sample
-    readnum="" # initialize variable name for read number (1 or 2)
+if [[ "$SINGLE_END" == "true" ]]; then
+    echo "[INFO] Running in SINGLE-END mode"
 
-    # --------- Option 1: SAMPLENAME_R1/R2.fastq.gz ---------
-    if [[ "$base" =~ ^(.+?)_R([12])(?:_[0-9]{3})?\.f(ast)?q\.gz$ ]]; then # check if file name matches SAMPLENAME_R1/2.fastq.gz pattern
-        sample="${BASH_REMATCH[1]}" # assign sample name
-        readnum="${BASH_REMATCH[2]}" # assign read number
-    # --------- Option 2: SAMPLENAME_1/2.fastq.gz ---------
-    elif [[ "$base" =~ ^(.+?)_([12])\.f(ast)?q\.gz$ ]]; then
-        sample="${BASH_REMATCH[1]}"
-        readnum="${BASH_REMATCH[2]}"
-    # --------- Option 3: Complex Illumina-style filenames ---------
-    #elif [[ "$base" =~ ^(.+?)(?:_S[0-9]+)?(?:_L[0-9]{3})?[_-]?([Rr]?[12])(?:_[0-9]{3})?\.f(ast)?q\.gz$ ]]; then
-    elif [[ "$base" =~ ^(.+?)_S[0-9]+_L[0-9]{3}_[Rr]?([12])_[0-9]{3}\.f(ast)?q\.gz$ ]]; then
-        sample="${BASH_REMATCH[1]}"
-        readnum="${BASH_REMATCH[2]}"
-        readnum="${readnum//[Rr]/}"  # normalize R1/R2 → 1/2
-    else
-        echo "[WARN] Could not parse FASTQ filename: $base" >&2
-        continue
+    if [[ -z "$FASTQ1_DIR" ]]; then
+        echo "[ERROR] FASTQ1_DIR is required for single-end mode."
+        exit 1
     fi
 
-    # --------- Assign to map ---------
-    case "$readnum" in # depending on the read number (1 or 2), store path in fq_map:
-        1) fq1_map["$sample"]="$fq" ;;
-        2) fq2_map["$sample"]="$fq" ;;
-        *) echo "[WARN] Unrecognized read number in $base" >&2 ;;
-    esac
-done
+    # Every file is its own sample
+    shopt -s nullglob
+    for fq in "$FASTQ1_DIR"/*.fastq.gz "$FASTQ1_DIR"/*.fq.gz; do
+        fname="$(basename "$fq")"
+        sample="${fname%%.*}"   # strip everything after the first '.'
+        fq1_map["$sample"]="$fq"
+    done
+    shopt -u nullglob
 
-# Build sample list
-for s in "${!fq1_map[@]}"; do
-    if [[ -n "${fq2_map[$s]:-}" ]]; then
-        SAMPLES+=("$s")
-    else
-        echo "[WARN] Sample '$s' has R1 but no R2" >&2
-    fi
-done
+else
+    echo "[INFO] Running in PAIRED-END mode"
 
-# Check R2 matches
-for s in "${!fq2_map[@]}"; do
-    [[ -z "${fq1_map[$s]:-}" ]] && echo "[WARN] Sample '$s' has R2 but no R1" >&2
-done
+    for fq in "$FASTQ_DIR"/*.fastq.gz "$FASTQ_DIR"/*.fq.gz; do # loop over all files ending in fastq.gz or fq.gz
+        [ -e "$fq" ] || continue # check if files exist
+        base=$(basename "$fq") # extract base name from fasttq file
+        sample="" # initialize variable name for sample
+        readnum="" # initialize variable name for read number (1 or 2)
 
-echo "[INFO] Found ${#SAMPLES[@]} paired samples"
+        # --------- Option 1: SAMPLENAME_R1/R2.fastq.gz ---------
+        if [[ "$base" =~ ^(.+?)_R([12])(?:_[0-9]{3})?\.f(ast)?q\.gz$ ]]; then # check if file name matches SAMPLENAME_R1/2.fastq.gz pattern
+            sample="${BASH_REMATCH[1]}" # assign sample name
+            readnum="${BASH_REMATCH[2]}" # assign read number
+        # --------- Option 2: SAMPLENAME_1/2.fastq.gz ---------
+        elif [[ "$base" =~ ^(.+?)_([12])\.f(ast)?q\.gz$ ]]; then
+            sample="${BASH_REMATCH[1]}"
+            readnum="${BASH_REMATCH[2]}"
+        # --------- Option 3: Complex Illumina-style filenames ---------
+        #elif [[ "$base" =~ ^(.+?)(?:_S[0-9]+)?(?:_L[0-9]{3})?[_-]?([Rr]?[12])(?:_[0-9]{3})?\.f(ast)?q\.gz$ ]]; then
+        elif [[ "$base" =~ ^(.+?)_S[0-9]+_L[0-9]{3}_[Rr]?([12])_[0-9]{3}\.f(ast)?q\.gz$ ]]; then
+            sample="${BASH_REMATCH[1]}"
+            readnum="${BASH_REMATCH[2]}"
+            readnum="${readnum//[Rr]/}"  # normalize R1/R2 → 1/2
+        else
+            echo "[WARN] Could not parse FASTQ filename: $base" >&2
+            continue
+        fi
 
-echo "[CHECK] FASTQ mappings for each sample:"
-for s in "${SAMPLES[@]}"; do
-    echo "  Sample: $s"
-    echo "    R1: ${fq1_map[$s]}"
-    echo "    R2: ${fq2_map[$s]}"
-done
+        # --------- Assign to map ---------
+        case "$readnum" in # depending on the read number (1 or 2), store path in fq_map:
+            1) fq1_map["$sample"]="$fq" ;;
+            2) fq2_map["$sample"]="$fq" ;;
+            *) echo "[WARN] Unrecognized read number in $base" >&2 ;;
+        esac
+    done
+
+
+    # Build sample list
+    for s in "${!fq1_map[@]}"; do
+        if [[ -n "${fq2_map[$s]:-}" ]]; then
+            SAMPLES+=("$s")
+        else
+            echo "[WARN] Sample '$s' has R1 but no R2" >&2
+        fi
+    done
+
+    # Check R2 matches
+    for s in "${!fq2_map[@]}"; do
+        [[ -z "${fq1_map[$s]:-}" ]] && echo "[WARN] Sample '$s' has R2 but no R1" >&2
+    done
+
+    echo "[INFO] Found ${#SAMPLES[@]} paired samples"
+
+    echo "[CHECK] FASTQ mappings for each sample:"
+    for s in "${SAMPLES[@]}"; do
+        echo "  Sample: $s"
+        echo "    R1: ${fq1_map[$s]}"
+        echo "    R2: ${fq2_map[$s]}"
+    done
+fi
 
 # ===========================================
 # Parallelized execution
@@ -247,41 +284,71 @@ done
 run_sample() {
     local sample="$1"
     local fq1="$2"
-    local fq2="$3"
+    local fq2="$3"   # may be empty in single-end mode
 
     echo "[INFO] Beginning processing for $sample"
     echo "[SANITY CHECK] Using FASTQs:"
     echo "    R1: $fq1"
-    echo "    R2: $fq2"
+    [[ "$SINGLE_END" == "false" ]] && echo "    R2: $fq2"
 
     local sample_outdir="$OUTPUT_DIR/$sample"
     mkdir -p "$sample_outdir"
 
-    if [[ -z "$fq1" || -z "$fq2" ]]; then
-        echo "[ERROR] FASTQs for '$sample' not found" >&2
-        return 1
+    # --------------------------------------------------
+    # Validate FASTQs
+    # --------------------------------------------------
+    if [[ "$SINGLE_END" == "true" ]]; then
+        if [[ -z "$fq1" ]]; then
+            echo "[ERROR] FASTQ for '$sample' missing (single-end mode)" >&2
+            return 1
+        fi
+    else
+        if [[ -z "$fq1" || -z "$fq2" ]]; then
+            echo "[ERROR] FASTQs for '$sample' missing (paired-end mode)" >&2
+            return 1
+        fi
     fi
 
+    # --------------------------------------------------
+    # Expected output markers
+    # --------------------------------------------------
     local bam_file="$sample_outdir/Mark_duplicates_outputs/${sample}.Aligned.sortedByCoord.out.md.bam"
     local rsem_file="$sample_outdir/RSEM_outputs/${sample}.rsem.genes.results.gz"
 
+    # --------------------------------------------------
     # Step 1 — Preprocessing
+    # --------------------------------------------------
     if [[ -f "$bam_file" && -f "$rsem_file" ]]; then
         echo "[SKIP] Preprocessing already complete for $sample"
     else
         echo "[RUN] Preprocessing for $sample..."
-        python3 "$PY_RUNNER1" \
-            --fastq1 "$fq1" \
-            --fastq2 "$fq2" \
-            --output_dir "$sample_outdir" \
-            --sample "$sample" \
-            > "$LOG_DIR/${sample}_bulk_preprocess.log" 2>&1
+
+        if [[ "$SINGLE_END" == "true" ]]; then
+            # Single-end runner
+            python3 "$PY_RUNNER_SINGLE" \
+                --fastq "$fq1" \
+                --output_dir "$sample_outdir" \
+                --sample "$sample" \
+                > "$LOG_DIR/${sample}_bulk_preprocess.log" 2>&1
+        else
+            # Paired-end runner
+            python3 "$PY_RUNNER1" \
+                --fastq1 "$fq1" \
+                --fastq2 "$fq2" \
+                --output_dir "$sample_outdir" \
+                --sample "$sample" \
+                > "$LOG_DIR/${sample}_bulk_preprocess.log" 2>&1
+        fi
     fi
 
+    # --------------------------------------------------
     # Clean bad symlinks
+    # --------------------------------------------------
     find "$sample_outdir" -xtype l -name data -delete 2>/dev/null
 
-    # Step 2 — Variant Calling
+    # --------------------------------------------------
+    # Step 2 — Variant Calling (unchanged)
+    # --------------------------------------------------
     if compgen -G "$sample_outdir/variant_calling/*.vcf.gz" > /dev/null; then
         echo "[SKIP] Variant calling already complete for $sample"
     else
@@ -292,23 +359,27 @@ run_sample() {
             > "$LOG_DIR/${sample}_wdl2.log" 2>&1
     fi
 
+    # --------------------------------------------------
+    # Cleanup
+    # --------------------------------------------------
     if [[ "$KEEP_FILES" == false ]]; then
         echo "[CLEANUP] Removing intermediate artifacts for $sample..."
 
-        rm -f "$sample_outdir"/RNAseq/*/call-SplitNCigarReads/execution/*.bam
-        rm -f "$sample_outdir"/RNAseq/*/call-SplitNCigarReads/execution/*.bai
-        rm -rf "$sample_outdir"/RNAseq/*/call-ScatterIntervalList/execution/out/
-        rm -rf "$sample_outdir"/RNAseq/*/call-HaplotypeCaller/shard-*
-        rm -f "$sample_outdir"/RNAseq/*/call-AddReadGroups/execution/*.bam
-        rm -f "$sample_outdir"/RNAseq/*/call-AddReadGroups/execution/*.bai
-        rm -f "$sample_outdir"/star_out/*.bai
-        rm -f "$sample_outdir"/star_out/*.bam
+        rm -f "$sample_outdir"/RNAseq/*/call-SplitNCigarReads/execution/*.bam 2>/dev/null || true
+        rm -f "$sample_outdir"/RNAseq/*/call-SplitNCigarReads/execution/*.bai 2>/dev/null || true
+        rm -rf "$sample_outdir"/RNAseq/*/call-ScatterIntervalList/execution/out/ 2>/dev/null || true
+        rm -rf "$sample_outdir"/RNAseq/*/call-HaplotypeCaller/shard-* 2>/dev/null || true
+        rm -f "$sample_outdir"/RNAseq/*/call-AddReadGroups/execution/*.bam 2>/dev/null || true
+        rm -f "$sample_outdir"/RNAseq/*/call-AddReadGroups/execution/*.bai 2>/dev/null || true
+        rm -f "$sample_outdir"/star_out/*.bai 2>/dev/null || true
+        rm -f "$sample_outdir"/star_out/*.bam 2>/dev/null || true
     else
         echo "[CLEANUP] Skipped (keep_files=true)"
     fi
 
     echo "[DONE] Completed sample $sample"
 }
+
 
 # Detect memory and cores (with or without slurm)
 get_total_memory_gb() {
