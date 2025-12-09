@@ -170,22 +170,30 @@ RSEM_REF=$(resolve_ref "RSEM reference" "rsem_reference" \
 declare -A fq1_map fq2_map # declare 2 associative arrays (keys are sample names, values are fastq paths)
 SAMPLES=()
 
+shopt -s nullglob
+
 if [[ "$SINGLE_END" == "true" ]]; then
     echo "[INFO] Running in SINGLE-END mode"
 
-    if [[ -z "$FASTQ1_DIR" ]]; then
-        echo "[ERROR] FASTQ1_DIR is required for single-end mode."
+    if [[ -z "$FASTQ_DIR" ]]; then
+        echo "[ERROR] FASTQ_DIR is required for single-end mode."
         exit 1
     fi
 
     # Every file is its own sample
-    shopt -s nullglob
-    for fq in "$FASTQ1_DIR"/*.fastq.gz "$FASTQ1_DIR"/*.fq.gz; do
+    for fq in "$FASTQ_DIR"/*.fastq.gz "$FASTQ_DIR"/*.fq.gz; do
         fname="$(basename "$fq")"
-        sample="${fname%%.*}"   # strip everything after the first '.'
+        sample="${fname%%.f*}"   # strip everything after the first '.'
         fq1_map["$sample"]="$fq"
+        fq2_map["$sample"]=""   # keep fq2 empty for consistency
+        SAMPLES+=("$sample")
     done
-    shopt -u nullglob
+
+    echo "[INFO] Found ${#SAMPLES[@]} single-end samples"
+    for s in "${SAMPLES[@]}"; do
+        echo "  Sample: $s"
+        echo "    R1: ${fq1_map[$s]}"
+    done
 
 else
     echo "[INFO] Running in PAIRED-END mode"
@@ -224,7 +232,7 @@ else
     done
 
 
-    # Build sample list
+    # Build sample list: include only samples with both R1 and R2
     for s in "${!fq1_map[@]}"; do
         if [[ -n "${fq2_map[$s]:-}" ]]; then
             SAMPLES+=("$s")
@@ -233,20 +241,20 @@ else
         fi
     done
 
-    # Check R2 matches
+    # Check for any R2 without R1
     for s in "${!fq2_map[@]}"; do
         [[ -z "${fq1_map[$s]:-}" ]] && echo "[WARN] Sample '$s' has R2 but no R1" >&2
     done
 
     echo "[INFO] Found ${#SAMPLES[@]} paired samples"
-
-    echo "[CHECK] FASTQ mappings for each sample:"
     for s in "${SAMPLES[@]}"; do
         echo "  Sample: $s"
         echo "    R1: ${fq1_map[$s]}"
         echo "    R2: ${fq2_map[$s]}"
     done
 fi
+
+shopt -u nullglob
 
 # ===========================================
 # Parallelized execution
@@ -272,13 +280,13 @@ fi
 RUN_ARGS=()
 for s in "${SAMPLES[@]}"; do
     fq1="${fq1_map[$s]}"
-    fq2="${fq2_map[$s]}"
+    fq2="${fq2_map[$s]:-}"  # may be empty for single-end
 
-    # Sanity check
     echo "[CHECK] FASTQs for sample $s:"
     echo "    R1: $fq1"
-    echo "    R2: $fq2"
+    [[ -n "$fq2" ]] && echo "    R2: $fq2"
 
+    # Add sample and its FASTQs to run arguments
     RUN_ARGS+=("$s" "$fq1" "$fq2")
 done
 
@@ -295,19 +303,11 @@ run_sample() {
     local sample_outdir="$OUTPUT_DIR/$sample"
     mkdir -p "$sample_outdir"
 
-    # --------------------------------------------------
     # Validate FASTQs
-    # --------------------------------------------------
     if [[ "$SINGLE_END" == "true" ]]; then
-        if [[ -z "$fq1" ]]; then
-            echo "[ERROR] FASTQ for '$sample' missing (single-end mode)" >&2
-            return 1
-        fi
+        [[ -z "$fq1" ]] && { echo "[ERROR] FASTQ for '$sample' missing (single-end mode)" >&2; return 1; }
     else
-        if [[ -z "$fq1" || -z "$fq2" ]]; then
-            echo "[ERROR] FASTQs for '$sample' missing (paired-end mode)" >&2
-            return 1
-        fi
+        [[ -z "$fq1" || -z "$fq2" ]] && { echo "[ERROR] FASTQs for '$sample' missing (paired-end mode)" >&2; return 1; }
     fi
 
     # --------------------------------------------------
@@ -323,16 +323,13 @@ run_sample() {
         echo "[SKIP] Preprocessing already complete for $sample"
     else
         echo "[RUN] Preprocessing for $sample..."
-
         if [[ "$SINGLE_END" == "true" ]]; then
-            # Single-end runner
             python3 "$PY_RUNNER_SINGLE" \
                 --fastq "$fq1" \
                 --output_dir "$sample_outdir" \
                 --sample "$sample" \
                 > "$LOG_DIR/${sample}_bulk_preprocess.log" 2>&1
         else
-            # Paired-end runner
             python3 "$PY_RUNNER1" \
                 --fastq1 "$fq1" \
                 --fastq2 "$fq2" \
@@ -343,12 +340,12 @@ run_sample() {
     fi
 
     # --------------------------------------------------
-    # Clean bad symlinks
+    # Clean bad symlinks (if they exist)
     # --------------------------------------------------
     find "$sample_outdir" -xtype l -name data -delete 2>/dev/null
 
     # --------------------------------------------------
-    # Step 2 — Variant Calling (unchanged)
+    # Step 2 — Variant Calling
     # --------------------------------------------------
     if compgen -G "$sample_outdir/variant_calling/*.vcf.gz" > /dev/null; then
         echo "[SKIP] Variant calling already complete for $sample"
@@ -382,7 +379,7 @@ run_sample() {
 }
 
 
-# Detect memory and cores (with or without slurm)
+# Detect memory and cores (with or without SLURM)
 get_total_memory_gb() {
     local total_gb
 
@@ -394,13 +391,12 @@ get_total_memory_gb() {
         total_gb=$(( (SLURM_MEM_PER_CPU * SLURM_CPUS_PER_TASK) / 1024 ))
     else
         # Fallback: detect actual available system memory (in GB)
-        # Use /proc/meminfo to get MemAvailable if possible, else MemTotal
         local available_kb
         available_kb=$(awk '/MemAvailable/ {print $2}' /proc/meminfo)
         if [[ -z "$available_kb" ]]; then
             available_kb=$(awk '/MemTotal/ {print $2}' /proc/meminfo)
         fi
-        # Use 60% of available memory for safety when running outside SLURM
+        # Use 80% of available memory for safety when running outside SLURM
         total_gb=$(awk -v kb="$available_kb" 'BEGIN {printf "%.0f", (kb / 1024 / 1024) * 0.8}')
     fi
 
@@ -417,7 +413,6 @@ get_total_cores() {
         cores="$SLURM_CPUS_PER_TASK"
     else
         # Fall back to the system’s available cores
-        # Use nproc if available, otherwise parse /proc/cpuinfo
         if command -v nproc &>/dev/null; then
             cores=$(nproc)
         else
@@ -434,15 +429,24 @@ MEM_PER_SAMPLE=64
 TOTAL_MEM_GB=$(get_total_memory_gb)
 TOTAL_CORES=$(get_total_cores)
 
+# Check if enough memory for at least one sample
+if (( TOTAL_MEM_GB < MEM_PER_SAMPLE )); then
+    echo "[ERROR] Not enough available memory to run even a single sample."
+    echo "        Required per sample: ${MEM_PER_SAMPLE} GB"
+    echo "        Available: ${TOTAL_MEM_GB} GB"
+    exit 1
+fi
+
 # Compute max concurrent jobs (respect memory and cores)
 MAX_JOBS=$(( TOTAL_MEM_GB / MEM_PER_SAMPLE ))
 (( MAX_JOBS < 1 )) && MAX_JOBS=1
 (( MAX_JOBS > TOTAL_CORES )) && MAX_JOBS=$TOTAL_CORES
 
-echo "[INFO] SLURM-aware resource detection:"
+echo "[INFO] Detected resources:"
 echo "       Memory available: ${TOTAL_MEM_GB} GB"
 echo "       Cores available:  ${TOTAL_CORES}"
 echo "       Max parallel jobs: ${MAX_JOBS}"
+
 
 # Export the job function and environment
 export -f run_sample
@@ -478,17 +482,18 @@ fi
 run_downstream() {
     local sample="$1"
     local fq1="$2"
-    local fq2="$3"
+    local fq2="$3"   # may be empty for single-end
     local sample_outdir="$OUTPUT_DIR/$sample"
     mkdir -p "$sample_outdir"
 
     echo "[INFO] Starting downstream analyses for sample: $sample"
-    if [[ -z "$fq1" || -z "$fq2" || ! -f "$fq1" || ! -f "$fq2" ]]; then
-        echo "[ERROR] Could not find both R1 and R2 files for sample '$sample' in $FASTQ_DIR" >&2
-        return 1   # return, don't exit entire pipeline
+    if [[ -z "$fq1" || ! -f "$fq1" ]]; then
+        echo "[ERROR] Could not find R1 file for sample '$sample' in $FASTQ_DIR" >&2
+        return 1
     fi
 
-    echo "[INFO] Using FASTQs: $(basename "$fq1"), $(basename "$fq2")"
+    echo "[INFO] Using FASTQs: $(basename "$fq1")"
+    [[ -n "$fq2" ]] && echo "    R2: $(basename "$fq2")"
 
     # -------------------------------------------------
     # Step: Mycoplasma detection
@@ -498,7 +503,7 @@ run_downstream() {
         echo "[STEP] Mycoplasma detection for $sample..."
         bash /pipeline/modules/mycoplasma_detection/detect_mycoplasma.sh \
             --fastq1 "$fq1" \
-            --fastq2 "$fq2" \
+            $( [[ -n "$fq2" ]] && echo "--fastq2 \"$fq2\"" ) \
             --ref_dir "$REF_DIR" \
             --output_dir "$sample_outdir" \
             --sample "$sample" \
@@ -509,7 +514,6 @@ run_downstream() {
 
     if [[ "$KEEP_FILES" == false ]]; then
         echo "[CLEANUP] Removing intermediate mycoplasma detection artifacts for $sample..."
-
         rm -f "$sample_outdir"/mycoplasma/*.bam
         rm -f "$sample_outdir"/mycoplasma/*.bam.bai
         rm -f "$sample_outdir"/mycoplasma/*.bt2
@@ -517,7 +521,6 @@ run_downstream() {
     else
         echo "[CLEANUP] Skipped (keep_files=true)"
     fi
-
     echo "[DONE] Completed mycoplasma detection for $sample"
 
     # -------------------------------------------------
@@ -539,7 +542,6 @@ run_downstream() {
     else
         echo "[SKIP] COSMIC_DIR not provided; skipping COSMIC mutation calling"
     fi
-
     echo "[DONE] Completed cancer mutation calling for $sample"
 
     # -------------------------------------------------
@@ -556,9 +558,11 @@ run_downstream() {
     else
         echo "[SKIP] eSNPKaryotyping variant table exists; skipping for $sample"
     fi
-
     echo "[DONE] Finished eSNPKaryotyping for $sample"
 
+    # -------------------------------------------------
+    # Cleanup
+    # -------------------------------------------------
     if [[ "$KEEP_FILES" == false ]]; then
         echo "[CLEANUP] Removing VCF and BAM files for $sample..."
         rm -f -r "$sample_outdir"/star_out
@@ -573,17 +577,16 @@ export -f run_downstream
 export OUTPUT_DIR FASTQ_DIR LOG_DIR REF_DIR COSMIC_DIR
 
 MAX_JOBS=${MAX_JOBS:-$(nproc)}
-#printf '%s\n' "${SAMPLES[@]}" | xargs -n1 -P "$MAX_JOBS" bash -c 'run_downstream "$@"' _
+
 tmplist=$(mktemp)
 for s in "${SAMPLES[@]}"; do
-  printf '%s\t%s\t%s\n' "$s" "${fq1_map[$s]}" "${fq2_map[$s]}" >> "$tmplist"
+  printf '%s\t%s\t%s\n' "$s" "${fq1_map[$s]}" "${fq2_map[$s]:-}" >> "$tmplist"
 done
 
-# Run downstream analyses in parallel safely
-xargs -a "$tmplist" -n1 -P "$MAX_JOBS" -I{} bash -c "IFS=\$'\t'; read -r sample fq1 fq2 <<< \"{}\"; run_downstream \"\$sample\" \"\$fq1\" \"\$fq2\"" _
+xargs -a "$tmplist" -n1 -P "$MAX_JOBS" -I{} bash -c \
+'IFS=$"\t"; read -r sample fq1 fq2 <<< "{}"; run_downstream "$sample" "$fq1" "$fq2"' _
 
 rm -f "$tmplist"
-
 
 echo "[STEP] Organizing output directories..."
 
