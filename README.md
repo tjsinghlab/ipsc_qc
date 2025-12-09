@@ -114,6 +114,7 @@ The pipeline depends on the following command line tools:
 | `--cosmic_dir`   | Directory containing downloaded COSMIC database files.                     | `cosmic`                       |
 | `--project`      | Project name                                                               | `default_project`              |
 | `--keep_files`   | Keep bulky intermediate files (VCFs, BAMs, etc.)?                          | `true`                         |
+| `--single_end`   | False for paired-end fastq file inputs, true for single-end                | `false`                        |
 
 **Note:**  
 * ***File base names should be unique for each sample and consistent across file types (e.g., `sample1.vcf`, `sample1.bam`, `sample1.genes.results`, `sample1_R1.fastq.gz`, `sample1_R2.fastq.gz`)***
