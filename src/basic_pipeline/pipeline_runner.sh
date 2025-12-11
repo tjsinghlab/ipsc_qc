@@ -183,7 +183,9 @@ if [[ "$SINGLE_END" == "true" ]]; then
     # Every file is its own sample
     for fq in "$FASTQ_DIR"/*.fastq.gz "$FASTQ_DIR"/*.fq.gz; do
         fname="$(basename "$fq")"
-        sample="${fname%%.f*}"   # strip everything after the first '.'
+        # Strip only the last .fastq or .fq extension, keep the sample name intact
+        sample="${fname%.fastq.gz}"
+        sample="${sample%.fq.gz}"
         fq1_map["$sample"]="$fq"
         fq2_map["$sample"]=""   # keep fq2 empty for consistency
         SAMPLES+=("$sample")
@@ -280,13 +282,9 @@ fi
 RUN_ARGS=()
 for s in "${SAMPLES[@]}"; do
     fq1="${fq1_map[$s]}"
-    fq2="${fq2_map[$s]:-}"  # may be empty for single-end
-
-    echo "[CHECK] FASTQs for sample $s:"
-    echo "    R1: $fq1"
-    [[ -n "$fq2" ]] && echo "    R2: $fq2"
-
-    # Add sample and its FASTQs to run arguments
+    # Always append an empty string for fq2 in single-end mode
+    fq2="${fq2_map[$s]:-}"
+    [[ "$SINGLE_END" == "true" ]] && fq2=""
     RUN_ARGS+=("$s" "$fq1" "$fq2")
 done
 
