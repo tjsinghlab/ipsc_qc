@@ -67,9 +67,9 @@ mkdir -p "$OUTPUT_DIR"
 LOG_DIR="$OUTPUT_DIR/logs"
 mkdir -p "$LOG_DIR"
 
-# ------------------------------------------------
+# ===========================================
 # Reference resolution
-# ------------------------------------------------
+# ===========================================
 echo "[STEP] Resolving reference files..."
 
 resolve_ref() {
@@ -85,9 +85,9 @@ resolve_ref() {
     echo "$f"
 }
 
-# ----------------------
-# Define resources
-# ----------------------
+# ===========================================
+# Define reference files
+# ===========================================
 resources=(
   
 
@@ -124,9 +124,9 @@ resources=(
 
 )
 
-# ----------------------
-# Resolve in one loop
-# ----------------------
+# ===========================================
+# Resolve STAR and RSEM refs in one loop
+# ===========================================
 for res in "${resources[@]}"; do
   IFS="|" read -r var file cmd <<< "$res"
   declare "$var=$(resolve_ref "$var" "$file" "$cmd")"
@@ -222,163 +222,199 @@ fi
 
 # Only initialize if default.conf is missing
 if [ ! -f "$HOME/.caper/default.conf" ]; then
-  echo "[INFO] No Caper config found — running caper init slurm..."
-  caper init slurm --out "$HOME/.caper/default.conf"
+  echo "[INFO] No Caper config found — running caper init..."
+  caper init local --out "$HOME/.caper/default.conf"
 else
   echo "[INFO] Existing Caper config found at $HOME/.caper/default.conf. Skipping init."
 fi
 
-# ------------------------------------------
-# Prepare list of samples with their FASTQs
-# ------------------------------------------
-RUN_ARGS=()
-for s in "${SAMPLES[@]}"; do
-    fq1="${fq1_map[$s]}"
-    fq2="${fq2_map[$s]}"
-
-    # Sanity check
-    echo "[CHECK] FASTQs for sample $s:"
-    echo "    R1: $fq1"
-    echo "    R2: $fq2"
-
-    RUN_ARGS+=("$s" "$fq1" "$fq2")
-done
-
-run_sample() {
-    local sample="$1"
-    local fq1="$2"
-    local fq2="$3"
-
-    echo "[INFO] Beginning processing for $sample"
-    echo "[SANITY CHECK] Using FASTQs:"
-    echo "    R1: $fq1"
-    echo "    R2: $fq2"
-
-    local sample_outdir="$OUTPUT_DIR/$sample"
-    mkdir -p "$sample_outdir"
-
-    if [[ -z "$fq1" || -z "$fq2" ]]; then
-        echo "[ERROR] FASTQs for '$sample' not found" >&2
-        return 1
-    fi
-
-    local bam_file="$sample_outdir/Mark_duplicates_outputs/${sample}.Aligned.sortedByCoord.out.md.bam"
-    local rsem_file="$sample_outdir/RSEM_outputs/${sample}.rsem.genes.results.gz"
-
-    # Step 1 — Preprocessing
-    if [[ -f "$bam_file" && -f "$rsem_file" ]]; then
-        echo "[SKIP] Preprocessing already complete for $sample"
-    else
-        echo "[RUN] Preprocessing for $sample..."
-        python3 "$PY_RUNNER1" \
-            --fastq1 "$fq1" \
-            --fastq2 "$fq2" \
-            --output_dir "$sample_outdir" \
-            --sample "$sample" \
-            > "$LOG_DIR/${sample}_bulk_preprocess.log" 2>&1
-    fi
-
-    # Clean bad symlinks
-    find "$sample_outdir" -xtype l -name data -delete 2>/dev/null
-
-    # Step 2 — Variant Calling
-    if compgen -G "$sample_outdir/variant_calling/*.vcf.gz" > /dev/null; then
-        echo "[SKIP] Variant calling already complete for $sample"
-    else
-        echo "[RUN] Variant calling for $sample..."
-        python3 "$PY_RUNNER2" \
-            --output_dir "$sample_outdir" \
-            --sample "$sample" \
-            > "$LOG_DIR/${sample}_wdl2.log" 2>&1
-    fi
-
-    if [[ "$KEEP_FILES" == false ]]; then
-        echo "[CLEANUP] Removing intermediate artifacts for $sample..."
-
-        rm -f "$sample_outdir"/RNAseq/*/call-SplitNCigarReads/execution/*.bam
-        rm -f "$sample_outdir"/RNAseq/*/call-SplitNCigarReads/execution/*.bai
-        rm -rf "$sample_outdir"/RNAseq/*/call-ScatterIntervalList/execution/out/
-        rm -rf "$sample_outdir"/RNAseq/*/call-HaplotypeCaller/shard-*
-        rm -f "$sample_outdir"/RNAseq/*/call-AddReadGroups/execution/*.bam
-        rm -f "$sample_outdir"/RNAseq/*/call-AddReadGroups/execution/*.bai
-        rm -f "$sample_outdir"/star_out/*.bai
-        rm -f "$sample_outdir"/star_out/*.bam
-    else
-        echo "[CLEANUP] Skipped (keep_files=true)"
-    fi
-
-    echo "[DONE] Completed sample $sample"
-}
-
-# Detect memory and cores (with or without slurm)
+# ===========================================
+# Resource detection
+# ===========================================
 get_total_memory_gb() {
     local total_gb
-
-    # If running under SLURM, try to detect memory allocation
     if [[ -n "${SLURM_MEM_PER_NODE:-}" ]]; then
-        total_gb=$(( SLURM_MEM_PER_NODE / 1024 ))  # MB → GB
+        total_gb=$(( SLURM_MEM_PER_NODE / 1024 ))
     elif [[ -n "${SLURM_MEM_PER_CPU:-}" && -n "${SLURM_CPUS_PER_TASK:-}" ]]; then
-        # Sometimes SLURM defines memory per CPU instead
         total_gb=$(( (SLURM_MEM_PER_CPU * SLURM_CPUS_PER_TASK) / 1024 ))
     else
-        # Fallback: detect actual available system memory (in GB)
-        # Use /proc/meminfo to get MemAvailable if possible, else MemTotal
         local available_kb
-        available_kb=$(awk '/MemAvailable/ {print $2}' /proc/meminfo)
-        if [[ -z "$available_kb" ]]; then
-            available_kb=$(awk '/MemTotal/ {print $2}' /proc/meminfo)
-        fi
-        # Use 60% of available memory for safety when running outside SLURM
-        total_gb=$(awk -v kb="$available_kb" 'BEGIN {printf "%.0f", (kb / 1024 / 1024) * 0.8}')
+        available_kb=$(awk '/MemAvailable/ {print $2}' /proc/meminfo || true)
+        [[ -z "$available_kb" ]] && available_kb=$(awk '/MemTotal/ {print $2}' /proc/meminfo)
+        total_gb=$(awk -v kb="$available_kb" 'BEGIN {printf "%.0f", (kb/1024/1024)*0.8}')
     fi
-
     echo "$total_gb"
 }
 
 get_total_cores() {
-    local cores
-
-    # Prefer SLURM, if present
-    if [[ -n "${SLURM_CPUS_ON_NODE:-}" ]]; then
-        cores="$SLURM_CPUS_ON_NODE"
-    elif [[ -n "${SLURM_CPUS_PER_TASK:-}" ]]; then
-        cores="$SLURM_CPUS_PER_TASK"
-    else
-        # Fall back to the system’s available cores
-        # Use nproc if available, otherwise parse /proc/cpuinfo
-        if command -v nproc &>/dev/null; then
-            cores=$(nproc)
-        else
-            cores=$(grep -c ^processor /proc/cpuinfo)
-        fi
+    if   [[ -n "${SLURM_CPUS_ON_NODE:-}" ]]; then echo "$SLURM_CPUS_ON_NODE"
+    elif [[ -n "${SLURM_CPUS_PER_TASK:-}" ]]; then echo "$SLURM_CPUS_PER_TASK"
+    elif command -v nproc >/dev/null;     then nproc
+    else grep -c ^processor /proc/cpuinfo
     fi
-
-    echo "$cores"
 }
 
-# Each sample needs ~64 GB to be safe
-MEM_PER_SAMPLE=64
-
+MEM_PER_SAMPLE=96
 TOTAL_MEM_GB=$(get_total_memory_gb)
 TOTAL_CORES=$(get_total_cores)
 
-# Compute max concurrent jobs (respect memory and cores)
 MAX_JOBS=$(( TOTAL_MEM_GB / MEM_PER_SAMPLE ))
 (( MAX_JOBS < 1 )) && MAX_JOBS=1
 (( MAX_JOBS > TOTAL_CORES )) && MAX_JOBS=$TOTAL_CORES
 
-echo "[INFO] SLURM-aware resource detection:"
-echo "       Memory available: ${TOTAL_MEM_GB} GB"
-echo "       Cores available:  ${TOTAL_CORES}"
-echo "       Max parallel jobs: ${MAX_JOBS}"
+# NEW: hard cap at 5 concurrent jobs
+(( MAX_JOBS > 5 )) && MAX_JOBS=5
 
-# Export the job function and environment
-export -f run_sample
-export OUTPUT_DIR FASTQ_DIR LOG_DIR PY_RUNNER1 PY_RUNNER2 REF_DIR COSMIC_DIR
+echo "[INFO] Memory: $TOTAL_MEM_GB GB"
+echo "[INFO] Cores : $TOTAL_CORES"
+echo "[INFO] Max parallel jobs: $MAX_JOBS"
 
-# Run samples in parallel with smart throttling
-#printf '%s\n' "${SAMPLES[@]}" | xargs -n1 -P "$MAX_JOBS" bash -c 'run_sample "$@"' _
-printf '%s\n' "${RUN_ARGS[@]}" | xargs -n 3 -P "$MAX_JOBS" bash -c 'run_sample "$@"' _
+# ===========================================
+# Runner fnctns
+# ===========================================
+run_preprocess() {
+    local sample="$1"
+    local fq1="$2"
+    local fq2="$3"
+    local out="$OUTPUT_DIR/$sample"
+    mkdir -p "$out"
+
+    local bam="$out/Mark_duplicates_outputs/${sample}.Aligned.sortedByCoord.out.md.bam"
+    local rsem="$out/RSEM_outputs/${sample}.rsem.genes.results.gz"
+
+    if [[ -f "$bam" && -f "$rsem" ]]; then
+        echo "[SKIP] Preprocess already complete for $sample"
+        return 0
+    fi
+
+    echo "[RUN] Preprocessing $sample"
+
+    timeout --preserve-status 8h \
+        python3 "$PY_RUNNER1" \
+            --fastq1 "$fq1" \
+            --fastq2 "$fq2" \
+            --output_dir "$out" \
+            --sample "$sample" \
+        > "$LOG_DIR/${sample}_bulk_preprocess.log" 2>&1
+
+    local rc=$?
+    if [[ $rc -eq 124 ]]; then
+        echo "[TIMEOUT] Preprocess timed out for $sample"
+        return 1
+    fi
+    return $rc
+}
+
+run_variant() {
+    local sample="$1"
+    local out="$OUTPUT_DIR/$sample"
+
+    if compgen -G "$out/variant_calling/*.vcf.gz" >/dev/null; then
+        echo "[SKIP] Variant calling complete for $sample"
+        return 0
+    fi
+
+    echo "[RUN] Variant calling for $sample"
+
+    timeout --preserve-status 4h \
+        python3 "$PY_RUNNER2" \
+            --output_dir "$out" \
+            --sample "$sample" \
+        > "$LOG_DIR/${sample}_variant.log" 2>&1
+
+    local rc=$?
+    if [[ $rc -eq 124 ]]; then
+        echo "[TIMEOUT] Variant calling timed out for $sample"
+        return 1
+    fi
+    return $rc
+}
+
+export -f run_preprocess run_variant
+export OUTPUT_DIR LOG_DIR PY_RUNNER1 PY_RUNNER2
+
+# ===========================================
+# Parallel execution of WDL pipelines (will retry samples which fail and do not produce populated outputs)
+# ===========================================
+run_phase_with_retries() {
+    local phase="$1"   # "preprocess" or "variant"
+    shift
+    local samples=("$@")
+    local retries=3
+
+    for attempt in $(seq 1 $retries); do
+        echo "[PHASE: $phase] ATTEMPT $attempt/$retries"
+
+        # Build argument array for xargs
+        RUN_ARGS=()
+        for s in "${samples[@]}"; do
+            RUN_ARGS+=("$s" "${fq1_map[$s]}" "${fq2_map[$s]}")
+        done
+
+        printf '%s\n' "${RUN_ARGS[@]}" \
+          | xargs -n 3 -P "$MAX_JOBS" bash -c 'run_'"$phase"' "$@"' _
+
+        # After run, check completeness
+        incomplete=()
+        for s in "${samples[@]}"; do
+            out="$OUTPUT_DIR/$s"
+            if [[ "$phase" == "preprocess" ]]; then
+                bam="$out/Mark_duplicates_outputs/${s}.Aligned.sortedByCoord.out.md.bam"
+                rsem="$out/RSEM_outputs/${s}.rsem.genes.results.gz"
+                [[ ! -f "$bam" || ! -f "$rsem" ]] && incomplete+=("$s")
+            else
+                compgen -G "$out/variant_calling/*.vcf.gz" >/dev/null || incomplete+=("$s")
+            fi
+        done
+
+        if (( ${#incomplete[@]} == 0 )); then
+            echo "[PHASE: $phase] SUCCESS — all samples completed"
+            return 0
+        fi
+
+        echo "[PHASE: $phase] Incomplete samples: ${incomplete[*]}"
+        samples=("${incomplete[@]}")
+    done
+
+    echo "[ERROR] Phase '$phase' failed after $retries attempts: ${incomplete[*]}"
+    exit 1
+}
+
+# ===========================================
+# Bulk RNA Preprocessing
+# ===========================================
+run_phase_with_retries preprocess "${SAMPLES[@]}"
+
+# ===========================================
+# Variant Calling
+# ===========================================
+run_phase_with_retries variant "${SAMPLES[@]}"
+
+# ===========================================
+# File Cleanup
+# ===========================================
+echo "[INFO] File cleanup"
+
+for sample in "${SAMPLES[@]}"; do
+    out="$OUTPUT_DIR/$sample"
+
+    if [[ "$KEEP_FILES" == false ]]; then
+        echo "[CLEANUP] Removing intermediate artifacts for $sample..."
+        rm -f "$out"/RNAseq/*/call-SplitNCigarReads/execution/*.bam
+        rm -f "$out"/RNAseq/*/call-SplitNCigarReads/execution/*.bai
+        rm -rf "$out"/RNAseq/*/call-ScatterIntervalList/execution/out/
+        rm -rf "$out"/RNAseq/*/call-HaplotypeCaller/shard-*
+        rm -f "$out"/RNAseq/*/call-AddReadGroups/execution/*.bam
+        rm -f "$out"/RNAseq/*/call-AddReadGroups/execution/*.bai
+        rm -f "$out"/star_out/*.bai
+        rm -f "$out"/star_out/*.bam
+    else
+        echo "[CLEANUP] keep_files=true — skipping cleanup for $sample"
+    fi
+done
+
+echo "[INFO] Completed preprocessing and variant calling for all samples."
+
 
 # ===========================================
 # Step: Run PACNet + downstream scripts
@@ -548,7 +584,7 @@ mkdir -p "$OUTPUT_DIR/plots/outlier_analysis"
 [ -f "$OUTPUT_DIR/outlier_analysis/PCA_pacnet_scores.pdf" ] && cp "$OUTPUT_DIR/outlier_analysis/PCA_pacnet_scores.pdf" "$OUTPUT_DIR/plots/outlier_analysis/"
 [ -f "$OUTPUT_DIR/outlier_analysis/PCA_counts.pdf" ] && cp "$OUTPUT_DIR/outlier_analysis/PCA_counts.pdf" "$OUTPUT_DIR/plots/outlier_analysis/"
 
-##Construct summary table
+# Construct summary table
 echo "[STEP] Writing summary table..."
 Rscript /pipeline/modules/summary_writer.R \
     --output_dir "$OUTPUT_DIR" \
