@@ -18,7 +18,7 @@ workflow rnaseq_pipeline_fastq_workflow {
         String outdir
     }
 
-    Int disk_space=ceil(10 * size(fastq1, "GiB"))
+    Int disk_space=ceil(10 * size(fastq1, "GiB")) #disk scales with fastq size
     Int num_threads = 8
     Int num_preempt = 0
 
@@ -34,7 +34,7 @@ workflow rnaseq_pipeline_fastq_workflow {
         fastq2=fastq2, 
         prefix=prefix,
         star_index=star_index_oh75,
-        outdir=outdir
+        outdir=outdir,
     }
 
     call markduplicates_wdl.markduplicates as markduplicates {
@@ -49,7 +49,7 @@ workflow rnaseq_pipeline_fastq_workflow {
         prefix=prefix, 
         rsem_reference=rsem_reference,
         disk_space=disk_space,
-        outdir=outdir
+        outdir=outdir,
     }
 
     call rnaseqc_wdl.rnaseqc2 as qc {

@@ -95,7 +95,7 @@ db<-cosmic[,-c(2:8,19:25)]
 colnames(table)<-c("CHROMOSOME","POS","AD1","AD2","DP","Karyotype")
 
 print("Reading gene list...")
-genes<-read.table(file.path(ref_dir, "genes.txt"))
+genes<-read.table("/ref/genes.txt")
 
 print("Subsetting on genes of interest...")
 db<-db[db$GENE_SYMBOL%in%genes$V1]

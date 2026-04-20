@@ -110,7 +110,7 @@ for (sample in SAMPLES) {
       for (gene in all_genes) {
         sub <- df[GENE_SYMBOL == gene]
         total_counts[gene] <- sum(as.numeric(sub$unique_pos_count))
-        frame_counts[gene] <- sum(as.numeric(sub$unique_pos_count[grep("frame", sub$MUTATION_DESCRIPTION, ignore.case=TRUE)]))
+        frame_counts[gene] <- sum(as.numeric(sub$unique_pos_count[grep("frameshift", sub$MUTATION_DESCRIPTION, ignore.case=TRUE)]))
       }
     }
   }
@@ -127,7 +127,7 @@ for (sample in SAMPLES) {
   
   # Append dynamic genes
   for (gene in all_genes) {
-    row[paste0(gene, "_Frame_Mutations")] <- frame_counts[gene]
+    row[paste0(gene, "_Frameshift_Mutations")] <- frame_counts[gene]
     row[paste0(gene, "_Total_Mutations")] <- total_counts[gene]
   }
   

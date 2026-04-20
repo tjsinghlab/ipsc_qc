@@ -35,7 +35,7 @@ usage() {
 }
 
 # ===========================================
-# Arguments
+# Parse Arguments
 # ===========================================
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -86,10 +86,9 @@ resolve_ref() {
 }
 
 # ===========================================
-# Define reference files
+# Define reference files in accordance with above function
 # ===========================================
 resources=(
-  
 
   "ANNOTATION_GTF|gencode.v39.GRCh38.annotation.gtf|wget -O - http://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_39/gencode.v39.annotation.gtf.gz | gunzip -c > $REF_DIR/gencode.v39.GRCh38.annotation.gtf"
 
@@ -107,10 +106,12 @@ resources=(
   "KNOWN_VCF1_IDX|Mills_and_1000G_gold_standard.indels.hg38.vcf.gz.tbi|wget -O $REF_DIR/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz.tbi https://storage.googleapis.com/genomics-public-data/resources/broad/hg38/v0/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz.tbi"
   "KNOWN_VCF2_IDX|Homo_sapiens_assembly38.known_indels.vcf.gz.tbi|wget -O $REF_DIR/Homo_sapiens_assembly38.known_indels.vcf.gz.tbi https://storage.googleapis.com/genomics-public-data/resources/broad/hg38/v0/Homo_sapiens_assembly38.known_indels.vcf.gz.tbi"
 
+  # Below .sif files are now included in the image itself and will no longer be downloaded here
   #"GATK_SIF|gatk_4.6.1.0.sif|singularity pull $REF_DIR/gatk_4.6.1.0.sif library://biocontainers/gatk4:4.6.1.0--py310hdfd78af_0"
   #"GTEX_SIF|gtex_rnaseq_V10.sif|singularity pull $REF_DIR/gtex_rnaseq_V10.sif docker://broadinstitute/gtex_rnaseq:V10"
 
-  "GENE_LIST|genes.txt|wget -O $REF_DIR/genes.txt https://raw.githubusercontent.com/tjsinghlab/ipsc_qc/main/src/basic_pipeline/ref_files/genes.txt"
+  # Commenting out downloading genes.txt to avoid potentially overwriting additional genes for analysis added by user
+  #"GENE_LIST|genes.txt|wget -O $REF_DIR/genes.txt https://raw.githubusercontent.com/tjsinghlab/ipsc_qc/main/src/basic_pipeline/ref_files/genes.txt"
 
   "MYCO_ORALE_REF|GCF_000420105.1_ASM42010v1_genomic.fna.gz|wget -O $REF_DIR/GCF_000420105.1_ASM42010v1_genomic.fna.gz https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/420/105/GCF_000420105.1_ASM42010v1/GCF_000420105.1_ASM42010v1_genomic.fna.gz"
   "MYCO_FERMENTANS_REF|GCF_003704055.1_ASM370405v1_genomic.fna.gz|wget -O $REF_DIR/GCF_003704055.1_ASM370405v1_genomic.fna.gz https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/003/704/055/GCF_003704055.1_ASM370405v1/GCF_003704055.1_ASM370405v1_genomic.fna.gz"
@@ -132,7 +133,7 @@ for res in "${resources[@]}"; do
   declare "$var=$(resolve_ref "$var" "$file" "$cmd")"
 done
 
-# Special cases: STAR + RSEM need building
+# Special cases: STAR + RSEM references need building
 STAR_INDEX=$(resolve_ref "STAR index" "star_index_oh75" \
 "mkdir -p $REF_DIR/star_index_oh75 && \
  singularity exec /pipeline/modules/gtex_rnaseq_V10.sif STAR --runMode genomeGenerate \
@@ -211,84 +212,107 @@ for s in "${SAMPLES[@]}"; do
 done
 
 # ===========================================
-# Parallelized execution
+# Initialize caper
 # ===========================================
 
-# Run caper init but only if default.conf file does not already exist
 # Ensure .caper directory exists
-if [ ! -d "$HOME/.caper" ]; then
-  mkdir -p "$HOME/.caper"
+mkdir -p "$HOME/.caper"
+
+CONF="$HOME/.caper/default.conf"
+
+# Initialize only if missing
+# if [ ! -f "$CONF" ]; then
+#   echo "[INFO] No Caper config found — running caper init..."
+#   caper init local --out "$CONF"
+# else
+#   echo "[INFO] Existing Caper config found at $CONF. Skipping init."
+# fi
+
+caper init local
+
+echo "[INFO] Ensuring Cromwell concurrency limits are set"
+
+# Add workflow limit if missing
+if ! grep -q "max-concurrent-workflows" "$CONF"; then
+  cat >> "$CONF" <<'EOF'
+[system]
+max-concurrent-workflows=1
+io.number-of-threads=4
+EOF
 fi
 
-# Only initialize if default.conf is missing
-if [ ! -f "$HOME/.caper/default.conf" ]; then
-  echo "[INFO] No Caper config found — running caper init..."
-  caper init local --out "$HOME/.caper/default.conf"
-else
-  echo "[INFO] Existing Caper config found at $HOME/.caper/default.conf. Skipping init."
+# Add task limit if missing
+if ! grep -q "max-concurrent-tasks" "$CONF"; then
+  cat >> "$CONF" <<'EOF'
+[backend.default]
+max-concurrent-tasks=4
+EOF
 fi
+
 
 # ===========================================
 # Resource detection
 # ===========================================
 get_total_memory_gb() {
-    local total_gb
+    local total_gb #detect local gb (assigned from sbatch script if using slurm, otherwise detects your machine's resources)
     if [[ -n "${SLURM_MEM_PER_NODE:-}" ]]; then
-        total_gb=$(( SLURM_MEM_PER_NODE / 1024 ))
+        total_gb=$(( SLURM_MEM_PER_NODE / 1024 )) #store memory in megabytes if SLURM_MEM_PER_NODE is non-empty
     elif [[ -n "${SLURM_MEM_PER_CPU:-}" && -n "${SLURM_CPUS_PER_TASK:-}" ]]; then
-        total_gb=$(( (SLURM_MEM_PER_CPU * SLURM_CPUS_PER_TASK) / 1024 ))
+        total_gb=$(( (SLURM_MEM_PER_CPU * SLURM_CPUS_PER_TASK) / 1024 )) #compute total memory in megabytes * nCPU if both SLURM_MEM_PER_CPU and SLURM_CPUS_PER_TASK are non-empty
     else
-        local available_kb
-        available_kb=$(awk '/MemAvailable/ {print $2}' /proc/meminfo || true)
-        [[ -z "$available_kb" ]] && available_kb=$(awk '/MemTotal/ {print $2}' /proc/meminfo)
-        total_gb=$(awk -v kb="$available_kb" 'BEGIN {printf "%.0f", (kb/1024/1024)*0.8}')
+        local available_kb #if not using slurm or above slurm variables are empty, find local memory (in kilobytes)
+        available_kb=$(awk '/MemAvailable/ {print $2}' /proc/meminfo || true) #reads available memory on linux
+        [[ -z "$available_kb" ]] && available_kb=$(awk '/MemTotal/ {print $2}' /proc/meminfo) #if MemAvailable is empty, fallback to MemTotal
+        total_gb=$(awk -v kb="$available_kb" 'BEGIN {printf "%.0f", (kb/1024/1024)*0.8}') #convert kb->gb and use only 80% of available memory
     fi
     echo "$total_gb"
 }
 
-get_total_cores() {
-    if   [[ -n "${SLURM_CPUS_ON_NODE:-}" ]]; then echo "$SLURM_CPUS_ON_NODE"
-    elif [[ -n "${SLURM_CPUS_PER_TASK:-}" ]]; then echo "$SLURM_CPUS_PER_TASK"
-    elif command -v nproc >/dev/null;     then nproc
-    else grep -c ^processor /proc/cpuinfo
+get_total_cores() { #find number of cores available and print
+    if   [[ -n "${SLURM_CPUS_ON_NODE:-}" ]]; then echo "$SLURM_CPUS_ON_NODE" #total CPUs allocated on node (slurm)
+    elif [[ -n "${SLURM_CPUS_PER_TASK:-}" ]]; then echo "$SLURM_CPUS_PER_TASK" #assigned within sbatch script (slurm)
+    elif command -v nproc >/dev/null;     then nproc #find number of CPUs available (local)
+    else grep -c ^processor /proc/cpuinfo #final fallback option; counts lines starting with processor in /proc/cpuinfo (local/linux)
     fi
 }
 
-MEM_PER_SAMPLE=96
+MEM_PER_SAMPLE=120 #exaggerated GB needed for each sample; inflated to avoid trying to run too many samples at once and subsequent timeout
 TOTAL_MEM_GB=$(get_total_memory_gb)
 TOTAL_CORES=$(get_total_cores)
 
-MAX_JOBS=$(( TOTAL_MEM_GB / MEM_PER_SAMPLE ))
-(( MAX_JOBS < 1 )) && MAX_JOBS=1
-(( MAX_JOBS > TOTAL_CORES )) && MAX_JOBS=$TOTAL_CORES
+MAX_JOBS=$(( TOTAL_MEM_GB / MEM_PER_SAMPLE )) #set max number of jobs/samples to run at once based on 120 GB per sample and detected resources
+(( MAX_JOBS < 1 )) && MAX_JOBS=1 #make sure at least one job will run
+(( MAX_JOBS > TOTAL_CORES )) && MAX_JOBS=$TOTAL_CORES #if max jobs > total cores, then set max jobs to total cores to prevent running more samples than CPU cores
 
 # NEW: hard cap at 5 concurrent jobs
-(( MAX_JOBS > 5 )) && MAX_JOBS=5
+(( MAX_JOBS > 4 )) && MAX_JOBS=4 #don't allow more than 4 jobs to run at once; still under development, but problems have arisen at >4 samples at once (too many threads start and script times out)
 
 echo "[INFO] Memory: $TOTAL_MEM_GB GB"
 echo "[INFO] Cores : $TOTAL_CORES"
 echo "[INFO] Max parallel jobs: $MAX_JOBS"
 
 # ===========================================
-# Runner fnctns
+# Runner functions for bulk RNA preprocessing (fastqc, RSEM, etc.) and variant calling (GATK pipeline)
 # ===========================================
 run_preprocess() {
+    #define variables for run_preprocess sample fq1 fq2
     local sample="$1"
     local fq1="$2"
     local fq2="$3"
     local out="$OUTPUT_DIR/$sample"
     mkdir -p "$out"
 
-    local bam="$out/Mark_duplicates_outputs/${sample}.Aligned.sortedByCoord.out.md.bam"
-    local rsem="$out/RSEM_outputs/${sample}.rsem.genes.results.gz"
+    local bam="$out/Mark_duplicates_outputs/${sample}.Aligned.sortedByCoord.out.md.bam" #define expected bam file from mark duplicates 
+    local rsem="$out/RSEM_outputs/${sample}.rsem.genes.results.gz" #define expected results file from RSEM
 
     if [[ -f "$bam" && -f "$rsem" ]]; then
-        echo "[SKIP] Preprocess already complete for $sample"
+        echo "[SKIP] Preprocess already complete for $sample" #if RSEM and Mark Duplicates outputs exist, no need to run thes processes again
         return 0
     fi
 
     echo "[RUN] Preprocessing $sample"
 
+    #set time limit of 8h to avoid endless timeout if one sample fails and call preprocessing WDL pipeline:
     timeout --preserve-status 8h \
         python3 "$PY_RUNNER1" \
             --fastq1 "$fq1" \
@@ -297,32 +321,33 @@ run_preprocess() {
             --sample "$sample" \
         > "$LOG_DIR/${sample}_bulk_preprocess.log" 2>&1
 
-    local rc=$?
-    if [[ $rc -eq 124 ]]; then
+    local rc=$? #capture exit code of timeout python3 ... command
+    if [[ $rc -eq 124 ]]; then #exit code 124 = timeout
         echo "[TIMEOUT] Preprocess timed out for $sample"
-        return 1
+        return 1 #return failure code so this sample can be retried
     fi
-    return $rc
+    return $rc #return original exit code from Python runner
 }
 
-run_variant() {
+run_variant() { #define variant calling funciton for one sample
     local sample="$1"
     local out="$OUTPUT_DIR/$sample"
 
     if compgen -G "$out/variant_calling/*.vcf.gz" >/dev/null; then
-        echo "[SKIP] Variant calling complete for $sample"
+        echo "[SKIP] Variant calling complete for $sample" #if vcf.gz file exists in output directory already, then no need to run variant calling again
         return 0
     fi
 
     echo "[RUN] Variant calling for $sample"
 
-    timeout --preserve-status 4h \
+    #set 6hr time limit for variant calling (anything longer means something has gotten stuck and process must be terminated) and run variant calling WDL pipeline:
+    timeout --preserve-status 6h \
         python3 "$PY_RUNNER2" \
             --output_dir "$out" \
             --sample "$sample" \
         > "$LOG_DIR/${sample}_variant.log" 2>&1
 
-    local rc=$?
+    local rc=$? #same as above; capture exit code and retry if timed out
     if [[ $rc -eq 124 ]]; then
         echo "[TIMEOUT] Variant calling timed out for $sample"
         return 1
@@ -330,72 +355,72 @@ run_variant() {
     return $rc
 }
 
-export -f run_preprocess run_variant
-export OUTPUT_DIR LOG_DIR PY_RUNNER1 PY_RUNNER2
+export -f run_preprocess run_variant #export functions so they are visible to subshells
+export OUTPUT_DIR LOG_DIR PY_RUNNER1 PY_RUNNER2 #export necessary variables so child shells can access them
 
 # ===========================================
 # Parallel execution of WDL pipelines (will retry samples which fail and do not produce populated outputs)
 # ===========================================
 run_phase_with_retries() {
-    local phase="$1"   # "preprocess" or "variant"
-    shift
-    local samples=("$@")
-    local retries=3
+    local phase="$1"   # set phase name ("preprocess" or "variant")
+    shift #removes $1 so remaining arguments are samples
+    local samples=("$@") #store sample list in array
+    local retries=3 #max number of retry attempts for a failed/timed out sample
 
-    for attempt in $(seq 1 $retries); do
-        echo "[PHASE: $phase] ATTEMPT $attempt/$retries"
+    for attempt in $(seq 1 $retries); do #loop over retry attempts
+        echo "[PHASE: $phase] ATTEMPT $attempt/$retries" #log attempt number
 
         # Build argument array for xargs
-        RUN_ARGS=()
+        RUN_ARGS=() #initialize empty array
         for s in "${samples[@]}"; do
-            RUN_ARGS+=("$s" "${fq1_map[$s]}" "${fq2_map[$s]}")
+            RUN_ARGS+=("$s" "${fq1_map[$s]}" "${fq2_map[$s]}") #per sample, append name and both fastq files
         done
 
         printf '%s\n' "${RUN_ARGS[@]}" \
-          | xargs -n 3 -P "$MAX_JOBS" bash -c 'run_'"$phase"' "$@"' _
+          | xargs -n 3 -P "$MAX_JOBS" bash -c 'run_'"$phase"' "$@"' _ #parallel execution: 3 arguments per job, max concurrent jobs (calculated above), phase name, and _ as dummy $0; each job runs one sample
 
         # After run, check completeness
-        incomplete=()
-        for s in "${samples[@]}"; do
-            out="$OUTPUT_DIR/$s"
-            if [[ "$phase" == "preprocess" ]]; then
+        incomplete=() #initialize empty array for failed samples
+        for s in "${samples[@]}"; do #check each sample for completion
+            out="$OUTPUT_DIR/$s" #sample output dir
+            if [[ "$phase" == "preprocess" ]]; then #branch based on phase and look for expected outputs
                 bam="$out/Mark_duplicates_outputs/${s}.Aligned.sortedByCoord.out.md.bam"
                 rsem="$out/RSEM_outputs/${s}.rsem.genes.results.gz"
-                [[ ! -f "$bam" || ! -f "$rsem" ]] && incomplete+=("$s")
+                [[ ! -f "$bam" || ! -f "$rsem" ]] && incomplete+=("$s") #mark sample as incomplete if output file(s) is/are missing
             else
                 compgen -G "$out/variant_calling/*.vcf.gz" >/dev/null || incomplete+=("$s")
             fi
         done
 
-        if (( ${#incomplete[@]} == 0 )); then
+        if (( ${#incomplete[@]} == 0 )); then #check for no incomplete samples
             echo "[PHASE: $phase] SUCCESS — all samples completed"
             return 0
         fi
 
-        echo "[PHASE: $phase] Incomplete samples: ${incomplete[*]}"
+        echo "[PHASE: $phase] Incomplete samples: ${incomplete[*]}" #log failed samples if they exist
         samples=("${incomplete[@]}")
-    done
+    done #end retry loop
 
     echo "[ERROR] Phase '$phase' failed after $retries attempts: ${incomplete[*]}"
-    exit 1
+    exit 1 #fail pipeline if retries are exhausted
 }
 
 # ===========================================
 # Bulk RNA Preprocessing
 # ===========================================
-run_phase_with_retries preprocess "${SAMPLES[@]}"
+run_phase_with_retries preprocess "${SAMPLES[@]}" #run preprocessing with retries
 
 # ===========================================
 # Variant Calling
 # ===========================================
-run_phase_with_retries variant "${SAMPLES[@]}"
+run_phase_with_retries variant "${SAMPLES[@]}" #run variant calling with retries after preprocessing is complete
 
 # ===========================================
 # File Cleanup
 # ===========================================
 echo "[INFO] File cleanup"
 
-for sample in "${SAMPLES[@]}"; do
+for sample in "${SAMPLES[@]}"; do #if user has not elected to keep files, then for each sample delete output files which are not strictly necessary for the rest of the pipeline
     out="$OUTPUT_DIR/$sample"
 
     if [[ "$KEEP_FILES" == false ]]; then
@@ -536,7 +561,7 @@ run_downstream() {
 export -f run_downstream
 export OUTPUT_DIR FASTQ_DIR LOG_DIR REF_DIR COSMIC_DIR
 
-MAX_JOBS=${MAX_JOBS:-$(nproc)}
+#MAX_JOBS=${MAX_JOBS:-$(nproc)}
 #printf '%s\n' "${SAMPLES[@]}" | xargs -n1 -P "$MAX_JOBS" bash -c 'run_downstream "$@"' _
 tmplist=$(mktemp)
 for s in "${SAMPLES[@]}"; do
